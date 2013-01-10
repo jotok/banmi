@@ -1,0 +1,22 @@
+This dataset, called the FLAS dataset, was used repeatedly in my 1997 book. FLAS stands for "Foreign Language Attitude Scale." The data come from a pilot study conducted by a grad student in the School of Education at Penn State many moons ago. FLAS was an instrument (questionnaire) designed to predict achievement in the study of foreign languages. The questionnaire was given to N=279 students enrolled in various foreign language classes (French, Spanish, German, Russian) at Penn State. Variables include FLAS score, the final grade earned in the course, and other variables related to achievement.
+ 
+     'LAN2' 1=Spanish, 0=other.
+     'LAN3' 1=German, 0=other.
+     'LAN4' 1=Russian, 0=other.
+     'AGE' age group (1=less than 20, 2=20+).
+     'PRI' number of prior foreign language courses (1=none, 2=1-2,
+          3=3+).
+     'SEX' 0=male, 1=female
+     'MLAT' Modern Language Aptitude Test
+     'FLAS' Foreign Language Attitude Scale
+     'SATV' Scholastic Aptitude Test, verbal score
+     'SATM' Scholastic Aptitude Test, math score
+     'ENG' score on Penn State English placement exam
+     'HGPA' high school grade point average
+     'CGPA' current college grade point average
+     'GRD' final grade in foreign language course (1=B or lower, 2=A)
+
+Notice that the language variable, a nominal variable with
+four categories and no missing values, has been expressed as three
+dummy codes.
+ 
