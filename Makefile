@@ -1,5 +1,5 @@
-P=banmi
-OBJECTS=banmi_util.o
+P=flas
+OBJECTS = banmi_util.o banmi.o
 CFLAGS = -g -Wall
 LDLIBS = -lgsl -lgslcblas -lm
 CC=c99

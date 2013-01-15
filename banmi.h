@@ -1,27 +1,15 @@
-#include <assert.h>
 #include <math.h>
-#include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_vector.h>
 
 #include "banmi_util.h"
 
-#define MaxRows 300 // maximum number of rows of data
-#define NDiscrete 5 // number of discrete variables
-#define NIter 50
-
-#define DPWeight 50        // weight paramter to the DP
-#define SigmaA 17.5        // alpha parameter to sigma prior
-#define SigmaB 1.0/129838  // beta parameter to sigma prior
-#define LambdaA 3.0        // alpha parameter to lambda prior
-#define LambdaB 2.0        // beta parameter to lambda prior
-
-#define MissingContinuousData 32  // bit field mask to indicate missing continuous data
-
-const int DiscDim[5] = {2, 2, 2, 2, 3};
+typedef struct {
+    double dp_weight, sigma_a, sigma_b, lambda_a, lambda_b, mu_a, mu_b;
+} banmi_hyperparameters_t;
 
 typedef struct {
     // Data: multivariate discrete variable and univariate continuous variable,
@@ -38,9 +26,15 @@ typedef struct {
 
     // hyperparameters
     tab_t *crosstab;
-    double mu_a, mu_b, sigma_a, sigma_b, lambda_a, lambda_b, dp_weight;
+    banmi_hyperparameters_t *hp;
 
     // data properties
-    int n_rows, n_complete, n_missing, *mis_pat;
+    int n_rows, n_complete, n_missing, n_disc, *mis_pat;
+    int mask_missing_cont_data;
+    gsl_vector *bds_disc;
 } banmi_model_t;
 
+banmi_model_t* new_banmi_model(int max_rows, gsl_vector *bds_disc,
+                               double dp_weight, double sigma_a, double sigma_b,
+                               double lambda_a, double lambda_b);
+void banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter);
