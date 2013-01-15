@@ -5,6 +5,7 @@
 
 #define MaxRows 300
 #define NDiscrete 5
+#define NContinuous 1
 #define NIter 50
 
 #define DPWeight 50        // weight paramter to the DP
@@ -13,7 +14,7 @@
 #define LambdaA 3.0        // alpha parameter to lambda prior
 #define LambdaB 2.0        // beta parameter to lambda prior
 
-static double DiscDim[5] = {2, 2, 2, 2, 3};
+static double BdsDisc[5] = {2, 2, 2, 2, 3};
 
 // Open flas1.txt and read it into the data fields in the model. flas1.txt is
 // a space-delimited file with 280 lines, including a header. Each line 
@@ -64,8 +65,8 @@ read_data_from_file(banmi_model_t *model) {
         tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
         tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
 
-        model->cont[i] = (satm+0.0)/800.0;
-        model->cont_imp[i] = (satm+0.0)/800.0;
+        gsl_matrix_set(model->cont, i, 0, (satm+0.0)/800.0);
+        gsl_matrix_set(model->cont_imp, i, 0, (satm+0.0)/800.0);
 
         i++;
     } 
@@ -81,10 +82,10 @@ main() {
     gsl_vector *bds_disc = gsl_vector_alloc(NDiscrete);
     int i;
     for (i = 0; i < NDiscrete; i++)
-        gsl_vector_set(bds_disc, i, DiscDim[i]);
+        gsl_vector_set(bds_disc, i, BdsDisc[i]);
 
-    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, DPWeight, SigmaA, 
-                                           SigmaB, LambdaA, LambdaB);
+    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, NContinuous, DPWeight, 
+                                           SigmaA, SigmaB, LambdaA, LambdaB);
     read_data_from_file(model);
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
@@ -101,7 +102,8 @@ main() {
         disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix) + 1;
 
         printf("%2d %2d %2d %2d %2d %6.2f\n", 
-               lan2, lan3, lan4, age, pri, model->cont_imp[i] * 800);
+               lan2, lan3, lan4, age, pri, 
+               gsl_matrix_get(model->cont_imp, i, 0) * 800);
     }
 
     return 0;

@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <gsl/gsl_matrix.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_vector.h>
 
 typedef struct {
     int n;
@@ -27,6 +29,7 @@ tab_t* new_conditional_tab(const tab_t *t, const int *free_margins, const int *c
 void order(int *values, const int *by, int n);
 void order_d(double *values, const int *by, int n);
 void order_blocks(int *values, const int *by, int n_blocks, int block_size);
+void order_rows(gsl_matrix *mat, const int *by, int n_rows);
 
 int sample(gsl_rng *rng, int n, const int *weight);
 int sample_d(gsl_rng *rng, int n, const double *weight);

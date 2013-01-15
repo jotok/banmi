@@ -1,7 +1,7 @@
 #include "banmi.h"
 
 banmi_model_t*
-new_banmi_model(int max_rows, gsl_vector *bds_disc,
+new_banmi_model(int max_rows, gsl_vector *bds_disc, int n_cont,
                 double dp_weight, double sigma_a, double sigma_b, 
                 double lambda_a, double lambda_b) 
 {
@@ -12,11 +12,11 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc,
 
     model->disc = alloc_tab(2, data_dim);
     model->disc_imp = alloc_tab(2, data_dim);
-    model->cont = malloc(sizeof(double) * max_rows);
-    model->cont_imp = malloc(sizeof(double) * max_rows);
+    model->cont = gsl_matrix_alloc(max_rows, n_cont);
+    model->cont_imp = gsl_matrix_alloc(max_rows, n_cont);
 
     model->x = alloc_tab(2, data_dim);
-    model->mu = malloc(sizeof(double) * max_rows);
+    model->mu = gsl_matrix_alloc(max_rows, n_cont);
 
     // TODO update banmi_util to take vectors?
     int disc_dim[bds_disc->size];
@@ -34,6 +34,7 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc,
 
     model->bds_disc = bds_disc;
     model->n_disc = bds_disc->size;
+    model->n_cont = n_cont;
     model->mask_missing_cont_data = (int)pow(2, (double)bds_disc->size);
 
     model->mis_pat = malloc(sizeof(int) * max_rows);
@@ -44,17 +45,23 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc,
 // compute the missingness pattern for the given row of data
 int 
 missingness_pattern(const banmi_model_t *model, int row) {
-    int pattern = 0, i, ix[2];
+    int pattern = 0, mask = 1, i, ix[2];
     ix[0] = row;
 
     for (i = 0; i < model->n_disc; i++) {
         ix[1] = i;
         if (tab_get(model->disc, ix) < 0)
-            pattern |= 1 << i;
+            pattern |= mask;
+
+        mask = mask << 1;
     }
 
-    if (model->cont[row] < 0)
-        pattern |= 1 << model->n_disc;
+    for (i = 0; i < model->n_cont; i++) {
+        if (gsl_matrix_get(model->cont, row, i) < 0)
+            pattern |= mask;
+
+        mask = mask << 1;
+    }
 
     return pattern;
 }
@@ -90,10 +97,10 @@ sort_data_by_missingness_pattern(banmi_model_t *model) {
             n_complete++;
     }
 
-    order_d(model->cont, model->mis_pat, model->n_rows);
-    order_d(model->cont_imp, model->mis_pat, model->n_rows);
     order_blocks(model->disc->dat, model->mis_pat, model->n_rows, model->n_disc);
     order_blocks(model->disc_imp->dat, model->mis_pat, model->n_rows, model->n_disc);
+    order_rows(model->cont, model->mis_pat, model->n_rows);
+    order_rows(model->cont_imp, model->mis_pat, model->n_rows);
     order(model->mis_pat, model->mis_pat, model->n_rows);
 
     model->n_complete = n_complete;
@@ -103,7 +110,7 @@ sort_data_by_missingness_pattern(banmi_model_t *model) {
 }
 
 // Compute crosstab, mu_a, and mu_b from the data. Recall that lambda_a, lambda_b,
-// and dp_weight are set explicitly by the user in new_banmi_model.
+// sigma_a, sigma_b, and dp_weight are set explicitly by the user in new_banmi_model.
 //
 // This function should be called after sort_data_by_missingness_pattern, since
 // that function sets model->n_complete.
@@ -132,12 +139,16 @@ init_hyperparameters(banmi_model_t *model) {
     // take the distribution of means for the continuous variables to have a
     // beta distribution.  Note the mean computation uses all known values, not
     // just the ones in complete data rows.
+    //
+    // TODO this currently takes the mean of the first continuous variable;
+    // need to rewrite when the code is updated to use different mu and sigma
+    // for each coord.
 
-    double cont_mean = 0.0;
+    double cont_mean = 0.0, this_cont;
     j = 0;
     for (i = 0; i < model->n_rows; i++) {
-        if (model->cont[i] >= 0) {
-            cont_mean += model->cont[i];
+        if ((this_cont = gsl_matrix_get(model->cont, i, 0)) >= 0) {
+            cont_mean += this_cont;
             j++;
         }
     }
@@ -145,8 +156,8 @@ init_hyperparameters(banmi_model_t *model) {
 
     double cont_var = 0;
     for (i = 0; i < model->n_rows; i++) {
-        if (model->cont[i] >= 0)
-            cont_var += pow(model->cont[i] - cont_mean, 2.0);
+        if ((this_cont = gsl_matrix_get(model->cont, i, 0)) >= 0)
+            cont_var += pow(this_cont - cont_mean, 2.0);
     }
     cont_var /= j - 1;
 
@@ -198,10 +209,13 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
     }
 
     // fill in missing continuous values
+    //
+    // TODO update this when actually treating multiple continuous vars
 
     for (i = model->n_complete; i < model->n_rows; i++) {
-        if (model->cont[i] < 0)
-            model->cont_imp[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b);
+        if (gsl_matrix_get(model->cont, i, 0) < 0)
+            gsl_matrix_set(model->cont_imp, i, 0, 
+                           gsl_ran_beta(rng, model->mu_a, model->mu_b));
     }
 }
 
@@ -232,7 +246,10 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     int i, j, flat_ix, x_ix[2], crosstab_ix[model->n_disc];
 
     for (i = 0; i < model->n_rows; i++) {
-        model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b);
+        for (j = 0; j < model->n_cont; j++) {
+            gsl_matrix_set(model->mu, i, j,
+                           gsl_ran_beta(rng, model->mu_a, model->mu_b));
+        }
 
         x_ix[0] = i;
         flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
@@ -254,25 +271,29 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
         crosstab_ix[model->n_disc];
     double weight[model->n_rows];
 
+    gsl_vector *a_row = gsl_vector_alloc(model->n_cont);
+
     // draw new means/modes
+    //
+    // TODO update with multiple continuous
 
     for (i = 0; i < model->n_rows; i++) {
         weight[0] = model->dp_weight * kernel(model->bds_disc,
-                                                  model->cont_imp[i],
-                                                  model->disc_imp->dat + i*model->n_disc,
-                                                  model->mu[i],
-                                                  model->x->dat + i*model->n_disc,
-                                                  model->sigma,
-                                                  model->lambda);
+                                              gsl_matrix_get(model->cont_imp, i, 0),
+                                              model->disc_imp->dat + i*model->n_disc,
+                                              gsl_matrix_get(model->mu, i, 0),
+                                              model->x->dat + i*model->n_disc,
+                                              model->sigma,
+                                              model->lambda);
         k = 1; // insertion index
         for (j = 0; j < model->n_rows; j++) {
             if (j == i)
                 continue;
 
             weight[k] = kernel(model->bds_disc,
-                               model->cont_imp[i],
+                               gsl_matrix_get(model->cont_imp, i, 0),
                                model->disc_imp->dat + i*model->n_disc,
-                               model->mu[j],
+                               gsl_matrix_get(model->mu, i, 0),
                                model->x->dat + j*model->n_disc,
                                model->sigma,
                                model->lambda);
@@ -284,7 +305,9 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
         if (choice == 0) {
             // sample from G_0
-            model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b);
+            for (j = 0; j < model->n_cont; j++) 
+                gsl_matrix_set(model->mu, i, j,
+                               gsl_ran_beta(rng, model->mu_a, model->mu_b));
 
             x_ix[0] = i;
             flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
@@ -305,16 +328,25 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                 tab_set(model->x, x_ix, tab_get(model->x, y_ix));
             }
 
-            model->mu[i] = model->mu[choice];
+            gsl_matrix_get_row(a_row, model->mu, choice);
+            gsl_matrix_set_row(model->mu, i, a_row);
         }
+
     }
 
+    gsl_vector_free(a_row);
+
     // draw new sigma and lambda
+    //
+    // TODO update multiple continuous
 
     double sigma_a_post = model->sigma_a + model->n_rows / 2.0;
     double sigma_b_post = model->sigma_b;
+    double diff;
     for (i = 0; i < model->n_rows; i++) {
-        sigma_b_post += pow(model->cont_imp[i] - model->mu[i], 2.0) / 2.0;
+        diff = gsl_matrix_get(model->cont_imp, i, 0) - 
+               gsl_matrix_get(model->mu, i, 0);
+        sigma_b_post += pow(diff, 2.0) / 2.0;
     }
     sigma_b_post = 1.0 / sigma_b_post;
 
@@ -369,7 +401,9 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
         if (model->mis_pat[i] >= model->mask_missing_cont_data) {
             // the continuous value is missing
-            model->cont_imp[i] = model->mu[i] + gsl_ran_gaussian(rng, model->sigma);
+            // TODO multiple continuous vars
+            gsl_matrix_set(model->cont_imp, i, 0,
+                           gsl_matrix_get(model->mu, i, 0) + gsl_ran_gaussian(rng, model->sigma));
         }
     }
 }
