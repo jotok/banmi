@@ -5,14 +5,14 @@
 
 #define MaxRows 300
 #define NDiscrete 5
-#define NContinuous 1
+#define NContinuous 2
 #define NIter 50
 
 #define DPWeight 50        // weight paramter to the DP
 #define SigmaA 17.5        // alpha parameter to sigma prior
 #define SigmaB 1.0/129838  // beta parameter to sigma prior
-#define LambdaA 3.0        // alpha parameter to lambda prior
-#define LambdaB 2.0        // beta parameter to lambda prior
+#define LambdaA 2.0        // alpha parameter to lambda prior
+#define LambdaB 3.0        // beta parameter to lambda prior
 
 static double BdsDisc[5] = {2, 2, 2, 2, 3};
 
@@ -65,8 +65,10 @@ read_data_from_file(banmi_model_t *model) {
         tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
         tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
 
-        gsl_matrix_set(model->cont, i, 0, (satm+0.0)/800.0);
-        gsl_matrix_set(model->cont_imp, i, 0, (satm+0.0)/800.0);
+        gsl_matrix_set(model->cont, i, 0, (hgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont_imp, i, 0, (hgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont, i, 1, (cgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont_imp, i, 1, (cgpa+0.0)/4.0);
 
         i++;
     } 
@@ -101,10 +103,22 @@ main() {
         disc_ix[1] = 3; age = tab_get(model->disc_imp, disc_ix) + 1;
         disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix) + 1;
 
-        printf("%2d %2d %2d %2d %2d %6.2f\n", 
+        printf("%2d %2d %2d %2d %2d %4.2f %4.2f\n", 
                lan2, lan3, lan4, age, pri, 
-               gsl_matrix_get(model->cont_imp, i, 0) * 800);
+               gsl_matrix_get(model->cont_imp, i, 0) * 4.0,
+               gsl_matrix_get(model->cont_imp, i, 1) * 4.0);
     }
+
+    printf("\n");
+    printf("lambda %4.2f %4.2f %4.2f %4.2f %4.2f\n",
+           gsl_vector_get(model->lambda, 0), 
+           gsl_vector_get(model->lambda, 1), 
+           gsl_vector_get(model->lambda, 2), 
+           gsl_vector_get(model->lambda, 3), 
+           gsl_vector_get(model->lambda, 4));
+    printf("sigma %4.2f %4.2f\n",
+           gsl_vector_get(model->sigma, 0), 
+           gsl_vector_get(model->sigma, 1));
 
     return 0;
 }
