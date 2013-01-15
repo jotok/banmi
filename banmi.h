@@ -8,10 +8,6 @@
 #include "banmi_util.h"
 
 typedef struct {
-    double dp_weight, sigma_a, sigma_b, lambda_a, lambda_b, mu_a, mu_b;
-} banmi_hyperparameters_t;
-
-typedef struct {
     // Data: multivariate discrete variable and univariate continuous variable,
     // including storage to contain both the original observations (with missing
     // fields) and the original data with imputed fields.
@@ -26,7 +22,7 @@ typedef struct {
 
     // hyperparameters
     tab_t *crosstab;
-    banmi_hyperparameters_t *hp;
+    double dp_weight, sigma_a, sigma_b, lambda_a, lambda_b, mu_a, mu_b;
 
     // data properties
     int n_rows, n_complete, n_missing, n_disc, *mis_pat;

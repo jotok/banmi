@@ -26,12 +26,11 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc,
 
     model->crosstab = alloc_tab(bds_disc->size, disc_dim);
 
-    model->hp = malloc(sizeof(banmi_hyperparameters_t));
-    model->hp->dp_weight = dp_weight;
-    model->hp->sigma_a = sigma_a;
-    model->hp->sigma_b = sigma_b;
-    model->hp->lambda_a = lambda_a;
-    model->hp->lambda_b = lambda_b;
+    model->dp_weight = dp_weight;
+    model->sigma_a = sigma_a;
+    model->sigma_b = sigma_b;
+    model->lambda_a = lambda_a;
+    model->lambda_b = lambda_b;
 
     model->bds_disc = bds_disc;
     model->n_disc = bds_disc->size;
@@ -151,8 +150,8 @@ init_hyperparameters(banmi_model_t *model) {
     }
     satm_var /= j - 1;
 
-    model->hp->mu_a = satm_mean * (satm_mean * (1 - satm_mean) / satm_var - 1);
-    model->hp->mu_b = (1 - satm_mean) * (satm_mean * (1 - satm_mean) / satm_var - 1);
+    model->mu_a = satm_mean * (satm_mean * (1 - satm_mean) / satm_var - 1);
+    model->mu_b = (1 - satm_mean) * (satm_mean * (1 - satm_mean) / satm_var - 1);
 }
 
 // Set initial values for missing values in the imputed data set. This function
@@ -202,7 +201,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
     for (i = model->n_complete; i < model->n_rows; i++) {
         if (model->cont[i] < 0)
-            model->cont_imp[i] = gsl_ran_beta(rng, model->hp->mu_a, model->hp->mu_b) * 800;
+            model->cont_imp[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b) * 800;
     }
 }
 
@@ -233,7 +232,7 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     int i, j, flat_ix, x_ix[2], crosstab_ix[model->n_disc];
 
     for (i = 0; i < model->n_rows; i++) {
-        model->mu[i] = gsl_ran_beta(rng, model->hp->mu_a, model->hp->mu_b) * 800.0;
+        model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b) * 800.0;
 
         x_ix[0] = i;
         flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
@@ -244,8 +243,8 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
         }
     }
 
-    model->sigma = sqrt(1.0 / gsl_ran_gamma(rng, model->hp->sigma_a, model->hp->sigma_b));
-    model->lambda = gsl_ran_beta(rng, model->hp->lambda_a, model->hp->lambda_b);
+    model->sigma = sqrt(1.0 / gsl_ran_gamma(rng, model->sigma_a, model->sigma_b));
+    model->lambda = gsl_ran_beta(rng, model->lambda_a, model->lambda_b);
 }
 
 void
@@ -258,7 +257,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     // draw new means/modes
 
     for (i = 0; i < model->n_rows; i++) {
-        weight[0] = model->hp->dp_weight * kernel(model->bds_disc,
+        weight[0] = model->dp_weight * kernel(model->bds_disc,
                                                   model->cont_imp[i],
                                                   model->disc_imp->dat + i*model->n_disc,
                                                   model->mu[i],
@@ -285,7 +284,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
         if (choice == 0) {
             // sample from G_0
-            model->mu[i] = gsl_ran_beta(rng, model->hp->mu_a, model->hp->mu_b) * 800.0;
+            model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b) * 800.0;
 
             x_ix[0] = i;
             flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
@@ -312,8 +311,8 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     // draw new sigma and lambda
 
-    double sigma_a_post = model->hp->sigma_a + model->n_rows / 2.0;
-    double sigma_b_post = model->hp->sigma_b;
+    double sigma_a_post = model->sigma_a + model->n_rows / 2.0;
+    double sigma_b_post = model->sigma_b;
     for (i = 0; i < model->n_rows; i++) {
         sigma_b_post += pow(model->cont_imp[i] - model->mu[i], 2.0) / 2.0;
     }
@@ -321,8 +320,8 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     model->sigma = sqrt(1.0 / gsl_ran_gamma(rng, sigma_a_post, sigma_b_post));
 
-    double lambda_a_post = model->hp->lambda_a;
-    double lambda_b_post = model->hp->lambda_b;
+    double lambda_a_post = model->lambda_a;
+    double lambda_b_post = model->lambda_b;
     int disc_ix[model->n_disc];
 
     for (i = 0; i < model->n_rows; i++) {
