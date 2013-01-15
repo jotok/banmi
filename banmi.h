@@ -18,7 +18,7 @@ typedef struct {
     // Latent variables
     tab_t *x;
     gsl_matrix *mu;
-    double sigma, lambda;
+    gsl_vector *sigma, *lambda;
 
     // hyperparameters
     tab_t *crosstab;
@@ -26,7 +26,7 @@ typedef struct {
 
     // data properties
     int n_rows, n_complete, n_missing, n_disc, n_cont, *mis_pat;
-    int mask_missing_cont_data;
+    int mask_missing_cont_data, mask_missing_disc_data;
     gsl_vector *bds_disc;
 } banmi_model_t;
 
