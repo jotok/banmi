@@ -129,29 +129,29 @@ init_hyperparameters(banmi_model_t *model) {
                 tab_get(model->crosstab, crosstab_ix) + 1);
     }
 
-    // take the distribution of means for SATM to be (scaled) beta
-    // recall, SATM takes values between 0 and 800. Note that I'm using all
-    // given SATM values, not just the ones in complete data rows.
+    // take the distribution of means for the continuous variables to have a
+    // beta distribution.  Note the mean computation uses all known values, not
+    // just the ones in complete data rows.
 
-    double satm_mean = 0.0;
+    double cont_mean = 0.0;
     j = 0;
     for (i = 0; i < model->n_rows; i++) {
         if (model->cont[i] >= 0) {
-            satm_mean += model->cont[i]/800;
+            cont_mean += model->cont[i];
             j++;
         }
     }
-    satm_mean /= j;
+    cont_mean /= j;
 
-    double satm_var = 0;
+    double cont_var = 0;
     for (i = 0; i < model->n_rows; i++) {
         if (model->cont[i] >= 0)
-            satm_var += pow(model->cont[i]/800 - satm_mean, 2.0);
+            cont_var += pow(model->cont[i] - cont_mean, 2.0);
     }
-    satm_var /= j - 1;
+    cont_var /= j - 1;
 
-    model->mu_a = satm_mean * (satm_mean * (1 - satm_mean) / satm_var - 1);
-    model->mu_b = (1 - satm_mean) * (satm_mean * (1 - satm_mean) / satm_var - 1);
+    model->mu_a = cont_mean * (cont_mean * (1 - cont_mean) / cont_var - 1);
+    model->mu_b = (1 - cont_mean) * (cont_mean * (1 - cont_mean) / cont_var - 1);
 }
 
 // Set initial values for missing values in the imputed data set. This function
@@ -201,7 +201,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
     for (i = model->n_complete; i < model->n_rows; i++) {
         if (model->cont[i] < 0)
-            model->cont_imp[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b) * 800;
+            model->cont_imp[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b);
     }
 }
 
@@ -232,7 +232,7 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     int i, j, flat_ix, x_ix[2], crosstab_ix[model->n_disc];
 
     for (i = 0; i < model->n_rows; i++) {
-        model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b) * 800.0;
+        model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b);
 
         x_ix[0] = i;
         flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
@@ -284,7 +284,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
         if (choice == 0) {
             // sample from G_0
-            model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b) * 800.0;
+            model->mu[i] = gsl_ran_beta(rng, model->mu_a, model->mu_b);
 
             x_ix[0] = i;
             flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);

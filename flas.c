@@ -64,8 +64,8 @@ read_data_from_file(banmi_model_t *model) {
         tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
         tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
 
-        model->cont[i] = (double)satm;
-        model->cont_imp[i] = (double)satm;
+        model->cont[i] = (satm+0.0)/800.0;
+        model->cont_imp[i] = (satm+0.0)/800.0;
 
         i++;
     } 
@@ -97,11 +97,11 @@ main() {
         disc_ix[1] = 0; lan2 = tab_get(model->disc_imp, disc_ix);
         disc_ix[1] = 1; lan3 = tab_get(model->disc_imp, disc_ix);
         disc_ix[1] = 2; lan4 = tab_get(model->disc_imp, disc_ix);
-        disc_ix[1] = 3; age = tab_get(model->disc_imp, disc_ix);
-        disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix);
+        disc_ix[1] = 3; age = tab_get(model->disc_imp, disc_ix) + 1;
+        disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix) + 1;
 
         printf("%2d %2d %2d %2d %2d %6.2f\n", 
-               lan2, lan3, lan4, age, pri, model->cont_imp[i]);
+               lan2, lan3, lan4, age, pri, model->cont_imp[i] * 800);
     }
 
     return 0;
