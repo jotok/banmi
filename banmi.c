@@ -1,7 +1,9 @@
 #include "banmi.h"
 
+// Allocate storage for a banmi_model struct, set explicit parameters.
+//
 banmi_model_t*
-new_banmi_model(int max_rows, gsl_vector *bds_disc, gsl_vector_int *bds_orde,
+new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde,
                 int n_cont, double dp_weight, double sigma_a, double sigma_b, 
                 double kappa_a, double kappa_b, double lambda_a, double lambda_b) 
 {
@@ -28,7 +30,7 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc, gsl_vector_int *bds_orde,
     int disc_dim[bds_disc->size];
     int i;
     for (i = 0; i < bds_disc->size; i++)
-        disc_dim[i] = (int)gsl_vector_get(bds_disc, i);
+        disc_dim[i] = (int)gsl_vector_int_get(bds_disc, i);
 
     model->crosstab = alloc_tab(bds_disc->size, disc_dim);
 
@@ -264,7 +266,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 }
 
 double 
-kernel(const gsl_vector *bds_disc, const gsl_vector_int *bds_orde, 
+kernel(const gsl_vector_int *bds_disc, const gsl_vector_int *bds_orde, 
        const gsl_vector *u, const gsl_vector_int *wo, const int *w, 
        const gsl_vector *mu, const gsl_vector_int *xo, const int *x, 
        const gsl_vector *sigma, const gsl_vector *kappa, const gsl_vector *lambda) 
@@ -276,7 +278,7 @@ kernel(const gsl_vector *bds_disc, const gsl_vector_int *bds_orde,
         if (w[i] == x[i])
             result *= 1 - gsl_vector_get(lambda, i);
         else
-            result *= gsl_vector_get(lambda, i) / (gsl_vector_get(bds_disc, i) - 1);
+            result *= gsl_vector_get(lambda, i) / (gsl_vector_int_get(bds_disc, i) - 1);
     }
 
     for (i = 0; i < wo->size; i++) {
@@ -519,7 +521,7 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
                     if (u > 1 - gsl_vector_get(model->lambda, j)) {
                         tab_set(model->disc_imp, disc_ix, tab_get(model->x, disc_ix));
                     } else {
-                        choice = (int) (gsl_rng_uniform(rng) * (gsl_vector_get(model->bds_disc, j) - 1));
+                        choice = (int) (gsl_rng_uniform(rng) * (gsl_vector_int_get(model->bds_disc, j) - 1));
 
                         if (choice >= tab_get(model->x, disc_ix))
                             choice++;

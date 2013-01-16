@@ -88,10 +88,10 @@ read_data_from_file(banmi_model_t *model) {
 
 int
 main() {
-    gsl_vector *bds_disc = gsl_vector_alloc(NDiscrete);
+    gsl_vector_int *bds_disc = gsl_vector_int_alloc(NDiscrete);
     int i;
     for (i = 0; i < NDiscrete; i++)
-        gsl_vector_set(bds_disc, i, BdsDisc[i]);
+        gsl_vector_int_set(bds_disc, i, BdsDisc[i]);
 
     gsl_vector_int *bds_orde = gsl_vector_int_alloc(NOrdered);
     for (i = 0; i < NOrdered; i++)

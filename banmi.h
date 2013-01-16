@@ -31,11 +31,11 @@ typedef struct {
     // data properties
     int n_rows, n_complete, n_missing, n_disc, n_orde, n_cont, *mis_pat;
     int mask_missing_cont_data, mask_missing_disc_data, mask_missing_orde_data;
-    gsl_vector *bds_disc;
-    gsl_vector_int *bds_orde;
+    gsl_vector_int *bds_disc, *bds_orde;
+
 } banmi_model_t;
 
-banmi_model_t* new_banmi_model(int max_rows, gsl_vector *bds_disc, 
+banmi_model_t* new_banmi_model(int max_rows, gsl_vector_int *bds_disc, 
                                gsl_vector_int *bds_orde, int n_cont, 
                                double dp_weight, double sigma_a, double sigma_b,
                                double kappa_a, double kappa_b, double lambda_a, 
