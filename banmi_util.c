@@ -166,8 +166,6 @@ new_conditional_tab(const tab_t *t, const int *free_margins, const int *conditio
 
 #define Swap(a, b, temp) { temp = a; a = b; b = temp; }
 
-// am I really implementing quicksort?
-
 int _partition(int *values, int *by, int left, int right, int pivot) {
     int itemp, pivot_value = by[pivot];
     double dtemp;

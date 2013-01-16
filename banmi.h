@@ -41,5 +41,3 @@ banmi_model_t* new_banmi_model(int max_rows, gsl_vector_int *bds_disc,
                                double kappa_a, double kappa_b, double lambda_a, 
                                double lambda_b);
 void banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter);
-
-int choose(int, int);
