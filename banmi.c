@@ -37,6 +37,8 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde
     model->dp_weight = dp_weight;
     model->mu_a = gsl_vector_alloc(n_cont);
     model->mu_b = gsl_vector_alloc(n_cont);
+    model->xo_a = gsl_vector_alloc(bds_orde->size);
+    model->xo_b = gsl_vector_alloc(bds_orde->size);
     model->sigma_a = sigma_a;
     model->sigma_b = sigma_b;
     model->kappa_a = kappa_a;
@@ -197,7 +199,25 @@ init_hyperparameters(banmi_model_t *model) {
         gsl_vector_set(model->mu_a, j,
                        mean * (mean * (1 - mean) / var - 1));
         gsl_vector_set(model->mu_b, j,
-                       (i - mean) * (mean * (1 - mean) / var - 1));
+                       (1 - mean) * (mean * (1 - mean) / var - 1));
+    }
+
+    int bd, wo;
+    for (j = 0; j < model->n_orde; j++) {
+        insert_index = 0;
+        bd = gsl_vector_int_get(model->bds_orde, j);
+        for (i = 0; i < model->n_rows; i++) {
+            if ((wo = gsl_matrix_int_get(model->orde, i, j)) >= 0)
+                temp[insert_index++] = (wo+0.0) / bd;
+        }
+
+        mean = gsl_stats_mean(temp, 1, insert_index);
+        var = gsl_stats_variance(temp, 1, insert_index);
+
+        gsl_vector_set(model->xo_a, j,
+                       mean * (mean * (1 - mean) / var - 1));
+        gsl_vector_set(model->xo_b, j,
+                       (1 - mean) * (mean * (1 - mean) / var - 1));
     }
 
 }
@@ -246,7 +266,8 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
         if (this_pattern & model->mask_missing_orde_data) {
             for (j = 0; j < model->n_orde; j++) {
                 if (gsl_matrix_int_get(model->orde, i, j) < 0) {
-                    this_orde = gsl_ran_beta(rng, model->kappa_a, model->kappa_b);
+                    this_orde = gsl_ran_beta(rng, gsl_vector_get(model->xo_a, j), 
+                                                  gsl_vector_get(model->xo_b, j));
                     this_orde *= gsl_vector_int_get(model->bds_orde, j);
                     gsl_matrix_int_set(model->orde_imp, i, j, (int)this_orde);
                 }
@@ -410,10 +431,10 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                                  gsl_vector_get(model->mu_b, j)));
 
             for (j = 0; j < model->n_orde; j++) {
-                double this_xo = gsl_ran_beta(rng, model->kappa_a, model->kappa_b) *
-                                 gsl_vector_int_get(model->bds_orde, j);
-                gsl_matrix_int_set(model->xo, i, j,
-                                   (int)this_xo);
+                double this_xo = gsl_ran_beta(rng, gsl_vector_get(model->xo_a, j), 
+                                                   gsl_vector_get(model->xo_b, j)); 
+                this_xo *= gsl_vector_int_get(model->bds_orde, j);
+                gsl_matrix_int_set(model->xo, i, j, (int)this_xo);
             }
 
             x_ix[0] = i;
