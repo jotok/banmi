@@ -5,7 +5,7 @@
 banmi_model_t*
 new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde,
                 int n_cont, double dp_weight, 
-                double kappa_a, double kappa_b, double lambda_a, double lambda_b) 
+                double lambda_a, double lambda_b) 
 {
 
     banmi_model_t *model = malloc(sizeof(banmi_model_t));
@@ -41,8 +41,8 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde
     model->xo_b = gsl_vector_alloc(bds_orde->size);
     model->sigma_a = gsl_vector_alloc(n_cont);
     model->sigma_b = gsl_vector_alloc(n_cont);
-    model->kappa_a = kappa_a;
-    model->kappa_b = kappa_b;
+    model->kappa_a = gsl_vector_alloc(bds_orde->size);
+    model->kappa_b = gsl_vector_alloc(bds_orde->size);
     model->lambda_a = lambda_a;
     model->lambda_b = lambda_b;
 
@@ -184,7 +184,7 @@ init_hyperparameters(banmi_model_t *model) {
     // just the ones in complete data rows.
     //
 
-    double mean, mean_sigma, var, u, temp[model->n_rows];
+    double mean, mean_shape, var, u, temp[model->n_rows];
     int insert_index;
     for (j = 0; j < model->n_cont; j++) {
         insert_index = 0;
@@ -203,9 +203,9 @@ init_hyperparameters(banmi_model_t *model) {
 
         // set sigma_a and sigma_b to have a mean given by Silverman's rule
         // and a weight equal to the number of complete observations
-        mean_sigma = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
+        mean_shape = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
         gsl_vector_set(model->sigma_a, j, (insert_index+0.0) / 2.0);
-        gsl_vector_set(model->sigma_b, j, 2.0 * mean_sigma / insert_index);
+        gsl_vector_set(model->sigma_b, j, 2.0 * mean_shape / insert_index);
     }
 
     int bd, wo;
@@ -224,6 +224,11 @@ init_hyperparameters(banmi_model_t *model) {
                        mean * (mean * (1 - mean) / var - 1));
         gsl_vector_set(model->xo_b, j,
                        (1 - mean) * (mean * (1 - mean) / var - 1));
+
+        // set note regarding sigma_a, sigma_b above
+        mean_shape = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
+        gsl_vector_set(model->kappa_a, j, (insert_index+0.0) / 2.0);
+        gsl_vector_set(model->kappa_b, j, 2.0 * mean_shape / insert_index);
     }
 
 }
@@ -337,9 +342,10 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
         }
 
         for (j = 0; j < model->n_orde; j++) {
+            double beta = gsl_ran_beta(rng, gsl_vector_get(model->xo_a, j),
+                                            gsl_vector_get(model->xo_b, j));
             gsl_matrix_int_set(model->xo, i, j,
-                               (int)(gsl_ran_beta(rng, model->kappa_a, model->kappa_b) *
-                                     gsl_vector_int_get(model->bds_orde, j)));
+                               (int)(beta * gsl_vector_int_get(model->bds_orde, j)));
         }
 
         x_ix[0] = i;
@@ -359,7 +365,8 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     }
 
     for (i = 0; i < model->n_orde; i++) {
-        s = gsl_ran_beta(rng, model->kappa_a, model->kappa_b);
+        s = sqrt(1.0 / gsl_ran_gamma(rng, gsl_vector_get(model->kappa_a, i), 
+                                          gsl_vector_get(model->kappa_b, i)));
         gsl_vector_set(model->kappa, i, s);
     }
 
@@ -499,21 +506,20 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                        sqrt(1.0 / gsl_ran_gamma(rng, sigma_a_post, sigma_b_post)));
     }
 
-    double kappa, kappa_a_post, kappa_b_post;
+    double kappa_a_post, kappa_b_post;
     for (j = 0; j < model->n_orde; j++) {
-        kappa_a_post = model->kappa_a;
-        kappa_b_post = model->kappa_b;
+        kappa_a_post = gsl_vector_get(model->kappa_a, j) + model->n_rows / 2.0;
+        kappa_b_post = gsl_vector_get(model->kappa_b, j);
 
         for (i = 0; i < model->n_rows; i++) {
             diff = gsl_matrix_int_get(model->orde_imp, i, j) -
                    gsl_matrix_int_get(model->xo, i, j);
-            if (diff < 0) diff = -diff;
-            kappa_a_post += diff;
-            kappa_b_post += gsl_vector_int_get(model->bds_orde, j) - diff;
+            kappa_b_post += pow(diff, 2.0) / 2.0;
         }
+        kappa_b_post = 1.0 / kappa_b_post;
 
-        kappa = gsl_ran_beta(rng, kappa_a_post, kappa_b_post);
-        gsl_vector_set(model->kappa, j, kappa);
+        gsl_vector_set(model->kappa, j,
+                       sqrt(1.0 / gsl_ran_gamma(rng, kappa_a_post, kappa_b_post)));
     }
 
     double lambda_a_post, lambda_b_post;

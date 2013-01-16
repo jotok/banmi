@@ -96,7 +96,7 @@ main() {
         gsl_vector_int_set(bds_orde, i, BdsOrde[i]);
 
     banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, bds_orde, NContinuous,
-                                           DPWeight, LambdaA, LambdaB,
+                                           DPWeight,
                                            LambdaA, LambdaB);
     read_data_from_file(model);
 
@@ -128,6 +128,9 @@ main() {
            gsl_vector_get(model->lambda, 2), 
            gsl_vector_get(model->lambda, 3), 
            gsl_vector_get(model->lambda, 4));
+    printf("kappa %4.2f %4.2f\n",
+           gsl_vector_get(model->kappa, 0), 
+           gsl_vector_get(model->kappa, 1));
     printf("sigma %4.2f %4.2f\n",
            gsl_vector_get(model->sigma, 0), 
            gsl_vector_get(model->sigma, 1));
