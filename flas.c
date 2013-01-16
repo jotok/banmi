@@ -67,6 +67,11 @@ read_data_from_file(banmi_model_t *model) {
         tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
         tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
 
+        gsl_matrix_int_set(model->orde, i, 0, satv);
+        gsl_matrix_int_set(model->orde_imp, i, 0, satv);
+        gsl_matrix_int_set(model->orde, i, 1, satm);
+        gsl_matrix_int_set(model->orde_imp, i, 1, satm);
+
         gsl_matrix_set(model->cont, i, 0, (hgpa+0.0)/4.0);
         gsl_matrix_set(model->cont_imp, i, 0, (hgpa+0.0)/4.0);
         gsl_matrix_set(model->cont, i, 1, (cgpa+0.0)/4.0);

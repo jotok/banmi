@@ -25,14 +25,8 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc, gsl_vector_int *bds_orde,
     model->kappa = gsl_vector_alloc(bds_orde->size);
     model->sigma = gsl_vector_alloc(n_cont);
 
-    model->kappa_weights = malloc(bds_orde->size * sizeof(int*));
-    int i;
-    for (i = 0; i < bds_orde->size; i++) {
-        model->kappa_weights[i] = malloc(gsl_vector_int_get(bds_orde, i) *
-                                         sizeof(int));
-    }
-
     int disc_dim[bds_disc->size];
+    int i;
     for (i = 0; i < bds_disc->size; i++)
         disc_dim[i] = (int)gsl_vector_get(bds_disc, i);
 
@@ -90,8 +84,7 @@ missingness_pattern(const banmi_model_t *model, int row) {
     }
 
     for (i = 0; i < model->n_orde; i++) {
-        ix[1] = i;
-        if (tab_get(model->disc, ix) < 0)
+        if (gsl_matrix_int_get(model->orde, row, i) < 0)
             pattern |= mask;
 
         mask = mask << 1;
@@ -254,7 +247,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
                 if (gsl_matrix_int_get(model->orde, i, j) < 0) {
                     this_orde = gsl_ran_beta(rng, model->kappa_a, model->kappa_b);
                     this_orde *= gsl_vector_int_get(model->bds_orde, j);
-                    gsl_matrix_int_set(model->orde, i, j, (int)this_orde);
+                    gsl_matrix_int_set(model->orde_imp, i, j, (int)this_orde);
                 }
             }
         }
@@ -270,23 +263,11 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
 }
 
-double
-kernel_orde(const gsl_vector_int *bds_orde, const int **kappa_weights, 
-            const gsl_vector_int *wo, const gsl_vector_int *xo) {
-    double result = 1.0;
-    int dist, j;
-    for (j = 0; j < bds_orde->size; j++) {
-        dist = abs(gsl_vector_int_get(wo, j) - gsl_vector_int_get(xo, j));
-        result *= kappa_weights[j][dist];
-    }
-    return result;
-}
-
 double 
 kernel(const gsl_vector *bds_disc, const gsl_vector_int *bds_orde, 
        const gsl_vector *u, const gsl_vector_int *wo, const int *w, 
        const gsl_vector *mu, const gsl_vector_int *xo, const int *x, 
-       const gsl_vector *sigma, const int **kappa_weights, const gsl_vector *lambda) 
+       const gsl_vector *sigma, const gsl_vector *kappa, const gsl_vector *lambda) 
 {
     int i;
     double result = 1.0;
@@ -298,7 +279,10 @@ kernel(const gsl_vector *bds_disc, const gsl_vector_int *bds_orde,
             result *= gsl_vector_get(lambda, i) / (gsl_vector_get(bds_disc, i) - 1);
     }
 
-    result *= kernel_orde(bds_orde, kappa_weights, wo, xo);
+    for (i = 0; i < wo->size; i++) {
+        result *= gsl_ran_gaussian_pdf(gsl_vector_int_get(wo, i) - gsl_vector_int_get(xo, i),
+                                       gsl_vector_get(kappa, i));
+    }
 
     for (i = 0; i < u->size; i++) {
         result *= gsl_ran_gaussian_pdf(gsl_vector_get(u, i) - gsl_vector_get(mu, i),
@@ -342,16 +326,9 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
         gsl_vector_set(model->sigma, i, s);
     }
 
-    int b;
     for (i = 0; i < model->n_orde; i++) {
         s = gsl_ran_beta(rng, model->kappa_a, model->kappa_b);
         gsl_vector_set(model->kappa, i, s);
-
-        b = gsl_vector_int_get(model->bds_orde, i);
-        for (j = 0; j < b; j++) {
-            // TODO leave out binomial coefficient for now
-            model->kappa_weights[i][j] = pow(s, j) * pow(s, b - j);
-        }
     }
 
     for (i = 0; i < model->n_disc; i++) {
@@ -391,7 +368,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                               xo_row,
                                               model->x->dat + i*model->n_disc,
                                               model->sigma,
-                                              (const int **)model->kappa_weights,
+                                              model->kappa,
                                               model->lambda);
 
         k = 1; // insertion index
@@ -413,7 +390,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                xo_row,
                                model->x->dat + j*model->n_disc,
                                model->sigma,
-                               (const int **)model->kappa_weights,
+                               model->kappa,
                                model->lambda);
 
             k++;
@@ -428,9 +405,10 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                gsl_ran_beta(rng, model->mu_a, model->mu_b));
 
             for (j = 0; j < model->n_orde; j++) {
+                double this_xo = gsl_ran_beta(rng, model->kappa_a, model->kappa_b) *
+                                 gsl_vector_int_get(model->bds_orde, j);
                 gsl_matrix_int_set(model->xo, i, j,
-                                   (int)(gsl_ran_beta(rng, model->kappa_a, model->kappa_b) *
-                                         gsl_vector_int_get(model->bds_orde, j)));
+                                   (int)this_xo);
             }
 
             x_ix[0] = i;
@@ -488,7 +466,6 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     }
 
     double kappa, kappa_a_post, kappa_b_post;
-    int b;
     for (j = 0; j < model->n_orde; j++) {
         kappa_a_post = model->kappa_a;
         kappa_b_post = model->kappa_b;
@@ -503,12 +480,6 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
         kappa = gsl_ran_beta(rng, kappa_a_post, kappa_b_post);
         gsl_vector_set(model->kappa, j, kappa);
-
-        b = gsl_vector_int_get(model->bds_orde, j);
-        for (k = 0; k < b; k++) {
-            // TODO leave out binomial coefficient for now
-            model->kappa_weights[j][k] = pow(kappa, k) * pow(kappa, b - k);
-        }
     }
 
     double lambda_a_post, lambda_b_post;
@@ -533,16 +504,8 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
 void
 draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
-    int i, j, k, b, max_b, dist, choice, disc_ix[2];
-    double u, mu, sigma, *weights;
-
-    // get the largest bound of an ordered variable
-    max_b = 0;
-    for (i = 0; i < model->n_orde; i++) {
-        if ((b = gsl_vector_int_get(model->bds_orde, i)) > max_b)
-            max_b = b;
-    }
-    weights = malloc(max_b * sizeof(double));
+    int i, j, xo, choice, disc_ix[2];
+    double u, mu, sigma, kappa, base, frac;
 
     for (i = model->n_complete; i < model->n_rows; i++) {
         disc_ix[0] = i;
@@ -570,14 +533,16 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
         if (model->mis_pat[i] & model->mask_missing_orde_data) {
             // there are missing ordered values
             for (j = 0; j < model->n_orde; j++) {
+                kappa = gsl_vector_get(model->kappa, j);
                 if (gsl_matrix_int_get(model->orde, i, j) < 0) {
-                    b = gsl_vector_int_get(model->bds_orde, j);
-                    for (k = 0; k < b; k++) {
-                        dist = abs(k - gsl_matrix_int_get(model->xo, i, j));
-                        weights[k] = model->kappa_weights[j][dist];
-                        choice = sample_d(rng, b, weights);
-                        gsl_matrix_int_set(model->orde_imp, i, j, choice);
-                    }
+                    xo = gsl_matrix_int_get(model->xo, i, j);
+                    frac = modf(xo + gsl_ran_gaussian(rng, kappa), &base);
+
+                    if (frac > 0.5)
+                        base += 1;
+
+                    gsl_matrix_int_set(model->orde_imp, i, j, (int)base);
+                                   
                 }
             }
         }
@@ -594,8 +559,6 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
             }
         }
     }
-
-    free(weights);
 }
 
 void 

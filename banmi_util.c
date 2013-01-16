@@ -331,6 +331,24 @@ int sample_d(gsl_rng *rng, int n, const double *weight) {
     return i;
 }
 
+int
+binary_search_d(double u, const double *cumweights, int left, int right) {
+    if (left >= right - 1 || u < cumweights[left + 1])
+        return left;
+
+    int mid = (left + right) / 2;
+    if (u < cumweights[mid])
+        return binary_search_d(u, cumweights, left, mid);
+    else
+        return binary_search_d(u, cumweights, mid, right);
+}
+
+int
+cumsample_d(gsl_rng *rng, int n, const double *cumweights) {
+    double u = gsl_rng_uniform(rng) * cumweights[n-1];
+    return binary_search_d(u, cumweights, 0, n);
+}
+
 void
 swap_rows_int(gsl_matrix_int *mat, int i, int j) {
     int k;
