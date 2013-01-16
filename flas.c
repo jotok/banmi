@@ -11,7 +11,7 @@
 
 #define DPWeight 50        // weight paramter to the DP
 #define LambdaA 2.0        // alpha parameter to lambda prior
-#define LambdaB 3.0        // beta parameter to lambda prior
+#define LambdaB 8.0        // beta parameter to lambda prior
 
 static double BdsDisc[5] = {2, 2, 2, 2, 3};
 static int BdsOrde[2] = {800, 800};

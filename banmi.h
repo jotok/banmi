@@ -40,7 +40,5 @@ typedef struct {
 
 banmi_model_t* new_banmi_model(int max_rows, gsl_vector_int *bds_disc, 
                                gsl_vector_int *bds_orde, int n_cont, 
-                               double dp_weight, 
-                               double lambda_a, 
-                               double lambda_b);
+                               double dp_weight, double lambda_a, double lambda_b);
 void banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter);

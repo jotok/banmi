@@ -4,8 +4,7 @@
 //
 banmi_model_t*
 new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde,
-                int n_cont, double dp_weight, 
-                double lambda_a, double lambda_b) 
+                int n_cont, double dp_weight, double lambda_a, double lambda_b) 
 {
 
     banmi_model_t *model = malloc(sizeof(banmi_model_t));
