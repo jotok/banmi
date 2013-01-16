@@ -4,7 +4,7 @@
 //
 banmi_model_t*
 new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde,
-                int n_cont, double dp_weight, double sigma_a, double sigma_b, 
+                int n_cont, double dp_weight, 
                 double kappa_a, double kappa_b, double lambda_a, double lambda_b) 
 {
 
@@ -39,8 +39,8 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde
     model->mu_b = gsl_vector_alloc(n_cont);
     model->xo_a = gsl_vector_alloc(bds_orde->size);
     model->xo_b = gsl_vector_alloc(bds_orde->size);
-    model->sigma_a = sigma_a;
-    model->sigma_b = sigma_b;
+    model->sigma_a = gsl_vector_alloc(n_cont);
+    model->sigma_b = gsl_vector_alloc(n_cont);
     model->kappa_a = kappa_a;
     model->kappa_b = kappa_b;
     model->lambda_a = lambda_a;
@@ -184,7 +184,7 @@ init_hyperparameters(banmi_model_t *model) {
     // just the ones in complete data rows.
     //
 
-    double mean, var, u, temp[model->n_rows];
+    double mean, mean_sigma, var, u, temp[model->n_rows];
     int insert_index;
     for (j = 0; j < model->n_cont; j++) {
         insert_index = 0;
@@ -200,6 +200,12 @@ init_hyperparameters(banmi_model_t *model) {
                        mean * (mean * (1 - mean) / var - 1));
         gsl_vector_set(model->mu_b, j,
                        (1 - mean) * (mean * (1 - mean) / var - 1));
+
+        // set sigma_a and sigma_b to have a mean given by Silverman's rule
+        // and a weight equal to the number of complete observations
+        mean_sigma = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
+        gsl_vector_set(model->sigma_a, j, (insert_index+0.0) / 2.0);
+        gsl_vector_set(model->sigma_b, j, 2.0 * mean_sigma / insert_index);
     }
 
     int bd, wo;
@@ -347,7 +353,8 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     double s;
     for (i = 0; i < model->n_cont; i++) {
-        s = sqrt(1.0 / gsl_ran_gamma(rng, model->sigma_a, model->sigma_b));
+        s = sqrt(1.0 / gsl_ran_gamma(rng, gsl_vector_get(model->sigma_a, i), 
+                                          gsl_vector_get(model->sigma_b, i)));
         gsl_vector_set(model->sigma, i, s);
     }
 
@@ -474,12 +481,13 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     // draw new sigma, kappa, and lambda
 
-    double sigma_a_post = model->sigma_a + model->n_rows / 2.0;
-    double sigma_b_post;
+    double sigma_a_post, sigma_b_post;
     double diff;
 
     for (j = 0; j < model->n_cont; j++) {
-        sigma_b_post = model->sigma_b;
+        sigma_a_post = gsl_vector_get(model->sigma_a, j) + model->n_rows / 2.0;
+        sigma_b_post = gsl_vector_get(model->sigma_b, j);
+
         for (i = 0; i < model->n_rows; i++) {
             diff = gsl_matrix_get(model->cont_imp, i, j) - 
                    gsl_matrix_get(model->mu, i, j);

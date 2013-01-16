@@ -10,8 +10,6 @@
 #define NIter 50
 
 #define DPWeight 50        // weight paramter to the DP
-#define SigmaA 17.5        // alpha parameter to sigma prior
-#define SigmaB 1.0/129838  // beta parameter to sigma prior
 #define LambdaA 2.0        // alpha parameter to lambda prior
 #define LambdaB 3.0        // beta parameter to lambda prior
 
@@ -98,7 +96,7 @@ main() {
         gsl_vector_int_set(bds_orde, i, BdsOrde[i]);
 
     banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, bds_orde, NContinuous,
-                                           DPWeight, SigmaA, SigmaB, LambdaA, LambdaB,
+                                           DPWeight, LambdaA, LambdaB,
                                            LambdaA, LambdaB);
     read_data_from_file(model);
 

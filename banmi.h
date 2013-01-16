@@ -25,9 +25,11 @@ typedef struct {
     gsl_vector *sigma, *kappa, *lambda;
 
     // hyperparameters
+    double dp_weight;
     tab_t *crosstab;
-    gsl_vector *mu_a, *mu_b, *xo_a, *xo_b;
-    double dp_weight, sigma_a, sigma_b, kappa_a, kappa_b, 
+    gsl_vector *mu_a, *mu_b, *xo_a, *xo_b,
+               *sigma_a, *sigma_b;
+    double kappa_a, kappa_b, 
            lambda_a, lambda_b;
 
     // data properties
@@ -39,7 +41,7 @@ typedef struct {
 
 banmi_model_t* new_banmi_model(int max_rows, gsl_vector_int *bds_disc, 
                                gsl_vector_int *bds_orde, int n_cont, 
-                               double dp_weight, double sigma_a, double sigma_b,
+                               double dp_weight, 
                                double kappa_a, double kappa_b, double lambda_a, 
                                double lambda_b);
 void banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter);
