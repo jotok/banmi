@@ -331,6 +331,80 @@ int sample_d(gsl_rng *rng, int n, const double *weight) {
     return i;
 }
 
+int
+binary_search_d(double u, const double *cumweights, int left, int right) {
+    if (left >= right - 1 || u < cumweights[left + 1])
+        return left;
+
+    int mid = (left + right) / 2;
+    if (u < cumweights[mid])
+        return binary_search_d(u, cumweights, left, mid);
+    else
+        return binary_search_d(u, cumweights, mid, right);
+}
+
+int
+cumsample_d(gsl_rng *rng, int n, const double *cumweights) {
+    double u = gsl_rng_uniform(rng) * cumweights[n-1];
+    return binary_search_d(u, cumweights, 0, n);
+}
+
+void
+swap_rows_int(gsl_matrix_int *mat, int i, int j) {
+    int k;
+    double temp;
+
+    for (k = 0; k < mat->size2; k++) {
+        temp = gsl_matrix_int_get(mat, i, k);
+        gsl_matrix_int_set(mat, i, k, gsl_matrix_int_get(mat, j, k));
+        gsl_matrix_int_set(mat, j, k, temp);
+    }
+}
+
+int 
+_partition_rows_int(gsl_matrix_int *mat, int *by, int left, int right, int pivot) {
+    int i, temp, pivot_value = by[pivot];
+    
+    Swap(by[pivot], by[right], temp)
+    swap_rows_int(mat, pivot, right);
+
+    int store_index = left;
+    for (i = left; i < right; i++) {
+        if (by[i] < pivot_value) {
+            Swap(by[i], by[store_index], temp)
+            swap_rows_int(mat, i, store_index);
+            store_index++;
+        }
+    }
+
+    Swap(by[store_index], by[right], temp)
+    swap_rows_int(mat, store_index, right);
+
+    return store_index;
+}
+
+void 
+_order_rows_int(gsl_matrix_int *mat, int *by, int left, int right) {
+    if (left < right) {
+        int pivot = (right + left) / 2;
+        pivot = _partition_rows_int(mat, by, left, right, pivot);
+        _order_rows_int(mat, by, left, pivot - 1);
+        _order_rows_int(mat, by, pivot + 1, right);
+    }
+}
+
+void 
+order_rows_int(gsl_matrix_int *mat, const int *by, int n_rows) {
+    int i, *by_copy = malloc(mat->size1 * sizeof(int));
+
+    for (i = 0; i < mat->size1; i++) 
+        by_copy[i] = by[i];
+
+    _order_rows_int(mat, by_copy, 0, n_rows - 1);
+
+    free(by_copy);
+}
+
 void
 swap_rows(gsl_matrix *mat, int i, int j) {
     int k;

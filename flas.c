@@ -5,6 +5,7 @@
 
 #define MaxRows 300
 #define NDiscrete 5
+#define NOrdered 2
 #define NContinuous 2
 #define NIter 50
 
@@ -15,6 +16,7 @@
 #define LambdaB 3.0        // beta parameter to lambda prior
 
 static double BdsDisc[5] = {2, 2, 2, 2, 3};
+static int BdsOrde[2] = {800, 800};
 
 // Open flas1.txt and read it into the data fields in the model. flas1.txt is
 // a space-delimited file with 280 lines, including a header. Each line 
@@ -65,6 +67,11 @@ read_data_from_file(banmi_model_t *model) {
         tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
         tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
 
+        gsl_matrix_int_set(model->orde, i, 0, satv);
+        gsl_matrix_int_set(model->orde_imp, i, 0, satv);
+        gsl_matrix_int_set(model->orde, i, 1, satm);
+        gsl_matrix_int_set(model->orde_imp, i, 1, satm);
+
         gsl_matrix_set(model->cont, i, 0, (hgpa+0.0)/4.0);
         gsl_matrix_set(model->cont_imp, i, 0, (hgpa+0.0)/4.0);
         gsl_matrix_set(model->cont, i, 1, (cgpa+0.0)/4.0);
@@ -86,8 +93,13 @@ main() {
     for (i = 0; i < NDiscrete; i++)
         gsl_vector_set(bds_disc, i, BdsDisc[i]);
 
-    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, NContinuous, DPWeight, 
-                                           SigmaA, SigmaB, LambdaA, LambdaB);
+    gsl_vector_int *bds_orde = gsl_vector_int_alloc(NOrdered);
+    for (i = 0; i < NOrdered; i++)
+        gsl_vector_int_set(bds_orde, i, BdsOrde[i]);
+
+    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, bds_orde, NContinuous,
+                                           DPWeight, SigmaA, SigmaB, LambdaA, LambdaB,
+                                           LambdaA, LambdaB);
     read_data_from_file(model);
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
@@ -103,8 +115,10 @@ main() {
         disc_ix[1] = 3; age = tab_get(model->disc_imp, disc_ix) + 1;
         disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix) + 1;
 
-        printf("%2d %2d %2d %2d %2d %4.2f %4.2f\n", 
+        printf("%2d %2d %2d %2d %2d %4d %4d %4.2f %4.2f\n", 
                lan2, lan3, lan4, age, pri, 
+               gsl_matrix_int_get(model->orde_imp, i, 0),
+               gsl_matrix_int_get(model->orde_imp, i, 1),
                gsl_matrix_get(model->cont_imp, i, 0) * 4.0,
                gsl_matrix_get(model->cont_imp, i, 1) * 4.0);
     }
