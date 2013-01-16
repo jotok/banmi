@@ -5,6 +5,7 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_statistics.h>
 #include <gsl/gsl_vector.h>
 
 #include "banmi_util.h"
@@ -26,7 +27,8 @@ typedef struct {
     // hyperparameters
     tab_t *crosstab;
     double dp_weight, sigma_a, sigma_b, kappa_a, kappa_b, 
-           lambda_a, lambda_b, mu_a, mu_b;
+           lambda_a, lambda_b;
+    gsl_vector *mu_a, *mu_b;
 
     // data properties
     int n_rows, n_complete, n_missing, n_disc, n_orde, n_cont, *mis_pat;

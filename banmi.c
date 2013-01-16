@@ -35,6 +35,8 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde
     model->crosstab = alloc_tab(bds_disc->size, disc_dim);
 
     model->dp_weight = dp_weight;
+    model->mu_a = gsl_vector_alloc(n_cont);
+    model->mu_b = gsl_vector_alloc(n_cont);
     model->sigma_a = sigma_a;
     model->sigma_b = sigma_b;
     model->kappa_a = kappa_a;
@@ -179,28 +181,25 @@ init_hyperparameters(banmi_model_t *model) {
     // beta distribution.  Note the mean computation uses all known values, not
     // just the ones in complete data rows.
     //
-    // TODO the following code sets a single pair of hyperparameters for all 
-    // for all continuous coords.
 
-    double cont_mean = 0.0, this_cont;
-    j = 0;
-    for (i = 0; i < model->n_rows; i++) {
-        if ((this_cont = gsl_matrix_get(model->cont, i, 0)) >= 0) {
-            cont_mean += this_cont;
-            j++;
+    double mean, var, u, temp[model->n_rows];
+    int insert_index;
+    for (j = 0; j < model->n_cont; j++) {
+        insert_index = 0;
+        for (i = 0; i < model->n_rows; i++) {
+            if ((u = gsl_matrix_get(model->cont, i, j)) >= 0)
+                temp[insert_index++] = u;
         }
-    }
-    cont_mean /= j;
 
-    double cont_var = 0;
-    for (i = 0; i < model->n_rows; i++) {
-        if ((this_cont = gsl_matrix_get(model->cont, i, 0)) >= 0)
-            cont_var += pow(this_cont - cont_mean, 2.0);
+        mean = gsl_stats_mean(temp, 1, insert_index);
+        var = gsl_stats_variance(temp, 1, insert_index);
+        
+        gsl_vector_set(model->mu_a, j,
+                       mean * (mean * (1 - mean) / var - 1));
+        gsl_vector_set(model->mu_b, j,
+                       (i - mean) * (mean * (1 - mean) / var - 1));
     }
-    cont_var /= j - 1;
 
-    model->mu_a = cont_mean * (cont_mean * (1 - cont_mean) / cont_var - 1);
-    model->mu_b = (1 - cont_mean) * (cont_mean * (1 - cont_mean) / cont_var - 1);
 }
 
 // Set initial values for missing values in the imputed data set. This function
@@ -258,7 +257,9 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
             for (j = 0; j < model->n_cont; j++) {
                 if (gsl_matrix_get(model->cont, i, j) < 0)
                     gsl_matrix_set(model->cont_imp, i, j, 
-                                   gsl_ran_beta(rng, model->mu_a, model->mu_b));
+                                   gsl_ran_beta(rng, 
+                                                gsl_vector_get(model->mu_a, j), 
+                                                gsl_vector_get(model->mu_b, j)));
             }
         }
     }
@@ -304,7 +305,8 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     for (i = 0; i < model->n_rows; i++) {
         for (j = 0; j < model->n_cont; j++) {
             gsl_matrix_set(model->mu, i, j,
-                           gsl_ran_beta(rng, model->mu_a, model->mu_b));
+                           gsl_ran_beta(rng, gsl_vector_get(model->mu_a, j), 
+                                             gsl_vector_get(model->mu_b, j)));
         }
 
         for (j = 0; j < model->n_orde; j++) {
@@ -404,7 +406,8 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
             // sample from G_0
             for (j = 0; j < model->n_cont; j++) 
                 gsl_matrix_set(model->mu, i, j,
-                               gsl_ran_beta(rng, model->mu_a, model->mu_b));
+                               gsl_ran_beta(rng, gsl_vector_get(model->mu_a, j), 
+                                                 gsl_vector_get(model->mu_b, j)));
 
             for (j = 0; j < model->n_orde; j++) {
                 double this_xo = gsl_ran_beta(rng, model->kappa_a, model->kappa_b) *
