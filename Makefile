@@ -7,4 +7,4 @@ CC=c99
 $(P): $(OBJECTS)
 
 clean:
-	rm -f $(P) $(OBJECTS)
+	rm -f $(P) $(OBJECTS) gmon.out

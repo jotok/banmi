@@ -5,6 +5,7 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc, gsl_vector_int *bds_orde,
                 int n_cont, double dp_weight, double sigma_a, double sigma_b, 
                 double kappa_a, double kappa_b, double lambda_a, double lambda_b) 
 {
+
     banmi_model_t *model = malloc(sizeof(banmi_model_t));
 
     int data_dim[2];
@@ -24,8 +25,14 @@ new_banmi_model(int max_rows, gsl_vector *bds_disc, gsl_vector_int *bds_orde,
     model->kappa = gsl_vector_alloc(bds_orde->size);
     model->sigma = gsl_vector_alloc(n_cont);
 
-    int disc_dim[bds_disc->size];
+    model->kappa_weights = malloc(bds_orde->size * sizeof(int*));
     int i;
+    for (i = 0; i < bds_orde->size; i++) {
+        model->kappa_weights[i] = malloc(gsl_vector_int_get(bds_orde, i) *
+                                         sizeof(int));
+    }
+
+    int disc_dim[bds_disc->size];
     for (i = 0; i < bds_disc->size; i++)
         disc_dim[i] = (int)gsl_vector_get(bds_disc, i);
 
@@ -263,48 +270,23 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
 }
 
-int
-choose(int n, int k) {
-    // TODO drop this function altogether to speed things up?
-    // what effect does that have on likelihood?
-    return 1;
-//     
-//     static bool init = 1;
-//     static int memo[800][800];
-// 
-//     if (init) {
-//         init = 0;
-//         int p, q;
-//         for (p = 0; p < 800; p++)
-//             for (q = 0; q < 800; q++)
-//                 memo[p][q] = 0;
-//     }
-// 
-//     if (memo[n][k] > 0)
-//         return memo[n][k];
-// 
-//     if (k > n-k)
-//         return choose(n, n - k);
-// 
-//     assert(k >= 0);
-//     int result = 1;
-//     int i;
-// 
-//     for (i = n; i > n - k; i--)
-//         result *= i;
-// 
-//     for (i = k; i > 1; i--)
-//         result /= i;
-// 
-//     memo[n][k] = result;
-//     return result;
+double
+kernel_orde(const gsl_vector_int *bds_orde, const int **kappa_weights, 
+            const gsl_vector_int *wo, const gsl_vector_int *xo) {
+    double result = 1.0;
+    int dist, j;
+    for (j = 0; j < bds_orde->size; j++) {
+        dist = abs(gsl_vector_int_get(wo, j) - gsl_vector_int_get(xo, j));
+        result *= kappa_weights[j][dist];
+    }
+    return result;
 }
 
 double 
 kernel(const gsl_vector *bds_disc, const gsl_vector_int *bds_orde, 
        const gsl_vector *u, const gsl_vector_int *wo, const int *w, 
        const gsl_vector *mu, const gsl_vector_int *xo, const int *x, 
-       const gsl_vector *sigma, const gsl_vector *kappa, const gsl_vector *lambda) 
+       const gsl_vector *sigma, const int **kappa_weights, const gsl_vector *lambda) 
 {
     int i;
     double result = 1.0;
@@ -316,16 +298,7 @@ kernel(const gsl_vector *bds_disc, const gsl_vector_int *bds_orde,
             result *= gsl_vector_get(lambda, i) / (gsl_vector_get(bds_disc, i) - 1);
     }
 
-    double b, k;
-    int dist;
-    for (i = 0; i < bds_orde->size; i++) {
-        b = gsl_vector_int_get(bds_orde, i);
-        k = gsl_vector_get(kappa, i);
-        dist = gsl_vector_int_get(wo, i) - gsl_vector_int_get(xo, i);
-        if (dist < 0) dist = -dist;
-
-        result *= pow(1 - k, b - 1 - dist) * pow(k, dist) * choose(b - 1, dist);
-    }
+    result *= kernel_orde(bds_orde, kappa_weights, wo, xo);
 
     for (i = 0; i < u->size; i++) {
         result *= gsl_ran_gaussian_pdf(gsl_vector_get(u, i) - gsl_vector_get(mu, i),
@@ -369,9 +342,16 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
         gsl_vector_set(model->sigma, i, s);
     }
 
+    int b;
     for (i = 0; i < model->n_orde; i++) {
         s = gsl_ran_beta(rng, model->kappa_a, model->kappa_b);
         gsl_vector_set(model->kappa, i, s);
+
+        b = gsl_vector_int_get(model->bds_orde, i);
+        for (j = 0; j < b; j++) {
+            // TODO leave out binomial coefficient for now
+            model->kappa_weights[i][j] = pow(s, j) * pow(s, b - j);
+        }
     }
 
     for (i = 0; i < model->n_disc; i++) {
@@ -411,7 +391,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                               xo_row,
                                               model->x->dat + i*model->n_disc,
                                               model->sigma,
-                                              model->kappa,
+                                              (const int **)model->kappa_weights,
                                               model->lambda);
 
         k = 1; // insertion index
@@ -433,7 +413,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                xo_row,
                                model->x->dat + j*model->n_disc,
                                model->sigma,
-                               model->kappa,
+                               (const int **)model->kappa_weights,
                                model->lambda);
 
             k++;
@@ -507,7 +487,8 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                        sqrt(1.0 / gsl_ran_gamma(rng, sigma_a_post, sigma_b_post)));
     }
 
-    double kappa_a_post, kappa_b_post;
+    double kappa, kappa_a_post, kappa_b_post;
+    int b;
     for (j = 0; j < model->n_orde; j++) {
         kappa_a_post = model->kappa_a;
         kappa_b_post = model->kappa_b;
@@ -520,8 +501,14 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
             kappa_b_post += gsl_vector_int_get(model->bds_orde, j) - diff;
         }
 
-        gsl_vector_set(model->kappa, j,
-                       gsl_ran_beta(rng, kappa_a_post, kappa_b_post));
+        kappa = gsl_ran_beta(rng, kappa_a_post, kappa_b_post);
+        gsl_vector_set(model->kappa, j, kappa);
+
+        b = gsl_vector_int_get(model->bds_orde, j);
+        for (k = 0; k < b; k++) {
+            // TODO leave out binomial coefficient for now
+            model->kappa_weights[j][k] = pow(kappa, k) * pow(kappa, b - k);
+        }
     }
 
     double lambda_a_post, lambda_b_post;
@@ -547,7 +534,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 void
 draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
     int i, j, k, b, max_b, dist, choice, disc_ix[2];
-    double u, mu, sigma, kappa, *weights;
+    double u, mu, sigma, *weights;
 
     // get the largest bound of an ordered variable
     max_b = 0;
@@ -584,14 +571,10 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
             // there are missing ordered values
             for (j = 0; j < model->n_orde; j++) {
                 if (gsl_matrix_int_get(model->orde, i, j) < 0) {
-                    kappa = gsl_vector_get(model->kappa, j);
                     b = gsl_vector_int_get(model->bds_orde, j);
                     for (k = 0; k < b; k++) {
-                        dist = k - gsl_matrix_int_get(model->xo, i, j);
-                        if (dist < 0) dist = -dist;
-                        weights[k] = pow(1 - kappa, b - dist) *
-                                     pow(kappa, dist) *
-                                     choose(b, dist);
+                        dist = abs(k - gsl_matrix_int_get(model->xo, i, j));
+                        weights[k] = model->kappa_weights[j][dist];
                         choice = sample_d(rng, b, weights);
                         gsl_matrix_int_set(model->orde_imp, i, j, choice);
                     }

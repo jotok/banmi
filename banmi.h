@@ -22,6 +22,7 @@ typedef struct {
     gsl_matrix_int *xo;
     gsl_matrix *mu;
     gsl_vector *sigma, *kappa, *lambda;
+    int **kappa_weights;
 
     // hyperparameters
     tab_t *crosstab;
