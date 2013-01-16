@@ -110,8 +110,10 @@ main() {
         disc_ix[1] = 3; age = tab_get(model->disc_imp, disc_ix) + 1;
         disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix) + 1;
 
-        printf("%2d %2d %2d %2d %2d %4.2f %4.2f\n", 
+        printf("%2d %2d %2d %2d %2d %4d %4d %4.2f %4.2f\n", 
                lan2, lan3, lan4, age, pri, 
+               gsl_matrix_int_get(model->orde_imp, i, 0),
+               gsl_matrix_int_get(model->orde_imp, i, 1),
                gsl_matrix_get(model->cont_imp, i, 0) * 4.0,
                gsl_matrix_get(model->cont_imp, i, 1) * 4.0);
     }

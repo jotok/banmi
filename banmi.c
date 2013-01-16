@@ -265,20 +265,39 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
 int
 choose(int n, int k) {
-    if (k > n-k)
-        return choose(n, n - k);
-
-    assert(k >= 0);
-    int result = 1;
-    int i;
-
-    for (i = n; i > n - k; i--)
-        result *= i;
-
-    for (i = k; i > 1; i--)
-        result /= i;
-
-    return result;
+    // TODO drop this function altogether to speed things up?
+    // what effect does that have on likelihood?
+    return 1;
+//     
+//     static bool init = 1;
+//     static int memo[800][800];
+// 
+//     if (init) {
+//         init = 0;
+//         int p, q;
+//         for (p = 0; p < 800; p++)
+//             for (q = 0; q < 800; q++)
+//                 memo[p][q] = 0;
+//     }
+// 
+//     if (memo[n][k] > 0)
+//         return memo[n][k];
+// 
+//     if (k > n-k)
+//         return choose(n, n - k);
+// 
+//     assert(k >= 0);
+//     int result = 1;
+//     int i;
+// 
+//     for (i = n; i > n - k; i--)
+//         result *= i;
+// 
+//     for (i = k; i > 1; i--)
+//         result /= i;
+// 
+//     memo[n][k] = result;
+//     return result;
 }
 
 double 
