@@ -8,4 +8,3 @@ $(P): $(OBJECTS)
 
 clean:
 	rm -f $(P) $(OBJECTS)
-	rm -f paper/*.{aux,log,pdf}
