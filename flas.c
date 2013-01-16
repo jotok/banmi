@@ -5,6 +5,7 @@
 
 #define MaxRows 300
 #define NDiscrete 5
+#define NOrdered 2
 #define NContinuous 2
 #define NIter 50
 
@@ -15,6 +16,7 @@
 #define LambdaB 3.0        // beta parameter to lambda prior
 
 static double BdsDisc[5] = {2, 2, 2, 2, 3};
+static int BdsOrde[2] = {800, 800};
 
 // Open flas1.txt and read it into the data fields in the model. flas1.txt is
 // a space-delimited file with 280 lines, including a header. Each line 
@@ -86,8 +88,13 @@ main() {
     for (i = 0; i < NDiscrete; i++)
         gsl_vector_set(bds_disc, i, BdsDisc[i]);
 
-    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, NContinuous, DPWeight, 
-                                           SigmaA, SigmaB, LambdaA, LambdaB);
+    gsl_vector_int *bds_orde = gsl_vector_int_alloc(NOrdered);
+    for (i = 0; i < NOrdered; i++)
+        gsl_vector_int_set(bds_orde, i, BdsOrde[i]);
+
+    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, bds_orde, NContinuous,
+                                           DPWeight, SigmaA, SigmaB, LambdaA, LambdaB,
+                                           LambdaA, LambdaB);
     read_data_from_file(model);
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
