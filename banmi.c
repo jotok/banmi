@@ -1,10 +1,20 @@
 #include "banmi.h"
 
+int
+banmi_to_ordered_value(double x, int max_value) {
+    return (int) ((max_value + 1) * x);
+}
+
+double
+banmi_from_ordered_value(int o, int max_value) {
+    return (o + 0.5) / (max_value + 1.0);
+}
+
 // Allocate storage for a banmi_model struct, set explicit parameters.
 //
 banmi_model_t*
-new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde,
-                int n_cont, double dp_weight, double lambda_a, double lambda_b) 
+new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont, 
+                double dp_weight, double lambda_a, double lambda_b) 
 {
 
     banmi_model_t *model = malloc(sizeof(banmi_model_t));
@@ -14,16 +24,12 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde
 
     model->disc = alloc_tab(2, data_dim);
     model->disc_imp = alloc_tab(2, data_dim);
-    model->orde = gsl_matrix_int_alloc(max_rows, bds_orde->size);
-    model->orde_imp = gsl_matrix_int_alloc(max_rows, bds_orde->size);
     model->cont = gsl_matrix_alloc(max_rows, n_cont);
     model->cont_imp = gsl_matrix_alloc(max_rows, n_cont);
 
     model->x = alloc_tab(2, data_dim);
-    model->xo = gsl_matrix_int_alloc(max_rows, bds_orde->size);
     model->mu = gsl_matrix_alloc(max_rows, n_cont);
     model->lambda = gsl_vector_alloc(bds_disc->size);
-    model->kappa = gsl_vector_alloc(bds_orde->size);
     model->sigma = gsl_vector_alloc(n_cont);
 
     int disc_dim[bds_disc->size];
@@ -36,32 +42,21 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, gsl_vector_int *bds_orde
     model->dp_weight = dp_weight;
     model->mu_a = gsl_vector_alloc(n_cont);
     model->mu_b = gsl_vector_alloc(n_cont);
-    model->xo_a = gsl_vector_alloc(bds_orde->size);
-    model->xo_b = gsl_vector_alloc(bds_orde->size);
     model->sigma_a = gsl_vector_alloc(n_cont);
     model->sigma_b = gsl_vector_alloc(n_cont);
-    model->kappa_a = gsl_vector_alloc(bds_orde->size);
-    model->kappa_b = gsl_vector_alloc(bds_orde->size);
     model->lambda_a = lambda_a;
     model->lambda_b = lambda_b;
 
     model->bds_disc = bds_disc;
     model->n_disc = bds_disc->size;
-    model->bds_orde = bds_orde;
-    model->n_orde = bds_orde->size;
     model->n_cont = n_cont;
 
     // this needs to be in sync with missingness_pattern
     int mask = 1;
     model->mask_missing_disc_data = 0;
-    model->mask_missing_orde_data = 0;
     model->mask_missing_cont_data = 0;
     for (i = 0; i < model->n_disc; i++) {
         model->mask_missing_disc_data |= mask;
-        mask = mask << 1;
-    }
-    for (i = 0; i < model->n_orde; i++) {
-        model->mask_missing_orde_data |= mask;
         mask = mask << 1;
     }
     for (i = 0; i < model->n_cont; i++) {
@@ -83,13 +78,6 @@ missingness_pattern(const banmi_model_t *model, int row) {
     for (i = 0; i < model->n_disc; i++) {
         ix[1] = i;
         if (tab_get(model->disc, ix) < 0)
-            pattern |= mask;
-
-        mask = mask << 1;
-    }
-
-    for (i = 0; i < model->n_orde; i++) {
-        if (gsl_matrix_int_get(model->orde, row, i) < 0)
             pattern |= mask;
 
         mask = mask << 1;
@@ -138,8 +126,6 @@ sort_data_by_missingness_pattern(banmi_model_t *model) {
 
     order_blocks(model->disc->dat, model->mis_pat, model->n_rows, model->n_disc);
     order_blocks(model->disc_imp->dat, model->mis_pat, model->n_rows, model->n_disc);
-    order_rows_int(model->orde, model->mis_pat, model->n_rows);
-    order_rows_int(model->orde_imp, model->mis_pat, model->n_rows);
     order_rows(model->cont, model->mis_pat, model->n_rows);
     order_rows(model->cont_imp, model->mis_pat, model->n_rows);
     order(model->mis_pat, model->mis_pat, model->n_rows);
@@ -206,30 +192,6 @@ init_hyperparameters(banmi_model_t *model) {
         gsl_vector_set(model->sigma_a, j, (insert_index+0.0) / 2.0);
         gsl_vector_set(model->sigma_b, j, 2.0 * mean_shape / insert_index);
     }
-
-    int bd, wo;
-    for (j = 0; j < model->n_orde; j++) {
-        insert_index = 0;
-        bd = gsl_vector_int_get(model->bds_orde, j);
-        for (i = 0; i < model->n_rows; i++) {
-            if ((wo = gsl_matrix_int_get(model->orde, i, j)) >= 0)
-                temp[insert_index++] = (wo+0.0) / bd;
-        }
-
-        mean = gsl_stats_mean(temp, 1, insert_index);
-        var = gsl_stats_variance(temp, 1, insert_index);
-
-        gsl_vector_set(model->xo_a, j,
-                       mean * (mean * (1 - mean) / var - 1));
-        gsl_vector_set(model->xo_b, j,
-                       (1 - mean) * (mean * (1 - mean) / var - 1));
-
-        // set note regarding sigma_a, sigma_b above
-        mean_shape = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
-        gsl_vector_set(model->kappa_a, j, (insert_index+0.0) / 2.0);
-        gsl_vector_set(model->kappa_b, j, 2.0 * mean_shape / insert_index);
-    }
-
 }
 
 // Set initial values for missing values in the imputed data set. This function
@@ -272,18 +234,6 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
             }
         }
 
-        double this_orde;
-        if (this_pattern & model->mask_missing_orde_data) {
-            for (j = 0; j < model->n_orde; j++) {
-                if (gsl_matrix_int_get(model->orde, i, j) < 0) {
-                    this_orde = gsl_ran_beta(rng, gsl_vector_get(model->xo_a, j), 
-                                                  gsl_vector_get(model->xo_b, j));
-                    this_orde *= gsl_vector_int_get(model->bds_orde, j);
-                    gsl_matrix_int_set(model->orde_imp, i, j, (int)this_orde);
-                }
-            }
-        }
-
         if (this_pattern & model->mask_missing_cont_data) {
             for (j = 0; j < model->n_cont; j++) {
                 if (gsl_matrix_get(model->cont, i, j) < 0)
@@ -298,10 +248,10 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 }
 
 double 
-kernel(const gsl_vector_int *bds_disc, const gsl_vector_int *bds_orde, 
-       const gsl_vector *u, const gsl_vector_int *wo, const int *w, 
-       const gsl_vector *mu, const gsl_vector_int *xo, const int *x, 
-       const gsl_vector *sigma, const gsl_vector *kappa, const gsl_vector *lambda) 
+kernel(const gsl_vector_int *bds_disc,
+       const gsl_vector *u, const int *w, 
+       const gsl_vector *mu, const int *x, 
+       const gsl_vector *sigma, const gsl_vector *lambda) 
 {
     int i;
     double result = 1.0;
@@ -311,11 +261,6 @@ kernel(const gsl_vector_int *bds_disc, const gsl_vector_int *bds_orde,
             result *= 1 - gsl_vector_get(lambda, i);
         else
             result *= gsl_vector_get(lambda, i) / (gsl_vector_int_get(bds_disc, i) - 1);
-    }
-
-    for (i = 0; i < wo->size; i++) {
-        result *= gsl_ran_gaussian_pdf(gsl_vector_int_get(wo, i) - gsl_vector_int_get(xo, i),
-                                       gsl_vector_get(kappa, i));
     }
 
     for (i = 0; i < u->size; i++) {
@@ -340,13 +285,6 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                              gsl_vector_get(model->mu_b, j)));
         }
 
-        for (j = 0; j < model->n_orde; j++) {
-            double beta = gsl_ran_beta(rng, gsl_vector_get(model->xo_a, j),
-                                            gsl_vector_get(model->xo_b, j));
-            gsl_matrix_int_set(model->xo, i, j,
-                               (int)(beta * gsl_vector_int_get(model->bds_orde, j)));
-        }
-
         x_ix[0] = i;
         flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
         tab_array_index(crosstab_ix, model->crosstab, flat_ix);
@@ -361,12 +299,6 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
         s = sqrt(1.0 / gsl_ran_gamma(rng, gsl_vector_get(model->sigma_a, i), 
                                           gsl_vector_get(model->sigma_b, i)));
         gsl_vector_set(model->sigma, i, s);
-    }
-
-    for (i = 0; i < model->n_orde; i++) {
-        s = sqrt(1.0 / gsl_ran_gamma(rng, gsl_vector_get(model->kappa_a, i), 
-                                          gsl_vector_get(model->kappa_b, i)));
-        gsl_vector_set(model->kappa, i, s);
     }
 
     for (i = 0; i < model->n_disc; i++) {
@@ -384,29 +316,20 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     gsl_vector *u_row = gsl_vector_alloc(model->n_cont);
     gsl_vector *mu_row = gsl_vector_alloc(model->n_cont);
-    gsl_vector_int *wo_row = gsl_vector_int_alloc(model->n_orde);
-    gsl_vector_int *xo_row = gsl_vector_int_alloc(model->n_orde);
     gsl_vector *a_row = gsl_vector_alloc(model->n_cont);
-    gsl_vector_int *i_row = gsl_vector_int_alloc(model->n_orde);
 
     // draw new means/modes
 
     for (i = 0; i < model->n_rows; i++) {
         gsl_matrix_get_row(u_row, model->cont_imp, i);
         gsl_matrix_get_row(mu_row, model->mu, i);
-        gsl_matrix_int_get_row(wo_row, model->orde_imp, i);
-        gsl_matrix_int_get_row(xo_row, model->xo, i);
 
         weight[0] = model->dp_weight * kernel(model->bds_disc,
-                                              model->bds_orde,
                                               u_row,
-                                              wo_row,
                                               model->disc_imp->dat + i*model->n_disc,
                                               mu_row,
-                                              xo_row,
                                               model->x->dat + i*model->n_disc,
                                               model->sigma,
-                                              model->kappa,
                                               model->lambda);
 
         k = 1; // insertion index
@@ -416,19 +339,13 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
             gsl_matrix_get_row(u_row, model->cont_imp, i);
             gsl_matrix_get_row(mu_row, model->mu, j);
-            gsl_matrix_int_get_row(wo_row, model->orde_imp, i);
-            gsl_matrix_int_get_row(xo_row, model->xo, j);
 
             weight[k] = kernel(model->bds_disc,
-                               model->bds_orde,
                                u_row,
-                               wo_row,
                                model->disc_imp->dat + i*model->n_disc,
                                mu_row,
-                               xo_row,
                                model->x->dat + j*model->n_disc,
                                model->sigma,
-                               model->kappa,
                                model->lambda);
 
             k++;
@@ -442,13 +359,6 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                 gsl_matrix_set(model->mu, i, j,
                                gsl_ran_beta(rng, gsl_vector_get(model->mu_a, j), 
                                                  gsl_vector_get(model->mu_b, j)));
-
-            for (j = 0; j < model->n_orde; j++) {
-                double this_xo = gsl_ran_beta(rng, gsl_vector_get(model->xo_a, j), 
-                                                   gsl_vector_get(model->xo_b, j)); 
-                this_xo *= gsl_vector_int_get(model->bds_orde, j);
-                gsl_matrix_int_set(model->xo, i, j, (int)this_xo);
-            }
 
             x_ix[0] = i;
             flat_ix = sample(rng, model->crosstab->size, model->crosstab->dat);
@@ -469,9 +379,6 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                 tab_set(model->x, x_ix, tab_get(model->x, y_ix));
             }
 
-            gsl_matrix_int_get_row(i_row, model->xo, choice);
-            gsl_matrix_int_set_row(model->xo, i, i_row);
-
             gsl_matrix_get_row(a_row, model->mu, choice);
             gsl_matrix_set_row(model->mu, i, a_row);
         }
@@ -480,12 +387,9 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     gsl_vector_free(u_row);
     gsl_vector_free(mu_row);
-    gsl_vector_int_free(wo_row);
-    gsl_vector_int_free(xo_row);
     gsl_vector_free(a_row);
-    gsl_vector_int_free(i_row);
 
-    // draw new sigma, kappa, and lambda
+    // draw new sigma and lambda
 
     double sigma_a_post, sigma_b_post;
     double diff;
@@ -503,22 +407,6 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
         gsl_vector_set(model->sigma, j,
                        sqrt(1.0 / gsl_ran_gamma(rng, sigma_a_post, sigma_b_post)));
-    }
-
-    double kappa_a_post, kappa_b_post;
-    for (j = 0; j < model->n_orde; j++) {
-        kappa_a_post = gsl_vector_get(model->kappa_a, j) + model->n_rows / 2.0;
-        kappa_b_post = gsl_vector_get(model->kappa_b, j);
-
-        for (i = 0; i < model->n_rows; i++) {
-            diff = gsl_matrix_int_get(model->orde_imp, i, j) -
-                   gsl_matrix_int_get(model->xo, i, j);
-            kappa_b_post += pow(diff, 2.0) / 2.0;
-        }
-        kappa_b_post = 1.0 / kappa_b_post;
-
-        gsl_vector_set(model->kappa, j,
-                       sqrt(1.0 / gsl_ran_gamma(rng, kappa_a_post, kappa_b_post)));
     }
 
     double lambda_a_post, lambda_b_post;
@@ -543,8 +431,8 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
 void
 draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
-    int i, j, xo, choice, disc_ix[2];
-    double u, mu, sigma, kappa, base, frac;
+    int i, j, choice, disc_ix[2];
+    double u, mu, sigma;
 
     for (i = model->n_complete; i < model->n_rows; i++) {
         disc_ix[0] = i;
@@ -565,23 +453,6 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
                         tab_set(model->disc_imp, disc_ix, choice);
                     }
-                }
-            }
-        }
-
-        if (model->mis_pat[i] & model->mask_missing_orde_data) {
-            // there are missing ordered values
-            for (j = 0; j < model->n_orde; j++) {
-                kappa = gsl_vector_get(model->kappa, j);
-                if (gsl_matrix_int_get(model->orde, i, j) < 0) {
-                    xo = gsl_matrix_int_get(model->xo, i, j);
-                    frac = modf(xo + gsl_ran_gaussian(rng, kappa), &base);
-
-                    if (frac > 0.5)
-                        base += 1;
-
-                    gsl_matrix_int_set(model->orde_imp, i, j, (int)base);
-                                   
                 }
             }
         }

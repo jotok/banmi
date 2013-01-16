@@ -5,8 +5,7 @@
 
 #define MaxRows 300
 #define NDiscrete 5
-#define NOrdered 2
-#define NContinuous 2
+#define NContinuous 4
 #define NIter 50
 
 #define DPWeight 50        // weight paramter to the DP
@@ -14,7 +13,6 @@
 #define LambdaB 8.0        // beta parameter to lambda prior
 
 static double BdsDisc[5] = {2, 2, 2, 2, 3};
-static int BdsOrde[2] = {800, 800};
 
 // Open flas1.txt and read it into the data fields in the model. flas1.txt is
 // a space-delimited file with 280 lines, including a header. Each line 
@@ -65,15 +63,14 @@ read_data_from_file(banmi_model_t *model) {
         tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
         tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
 
-        gsl_matrix_int_set(model->orde, i, 0, satv);
-        gsl_matrix_int_set(model->orde_imp, i, 0, satv);
-        gsl_matrix_int_set(model->orde, i, 1, satm);
-        gsl_matrix_int_set(model->orde_imp, i, 1, satm);
-
-        gsl_matrix_set(model->cont, i, 0, (hgpa+0.0)/4.0);
-        gsl_matrix_set(model->cont_imp, i, 0, (hgpa+0.0)/4.0);
-        gsl_matrix_set(model->cont, i, 1, (cgpa+0.0)/4.0);
-        gsl_matrix_set(model->cont_imp, i, 1, (cgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont, i, 0, banmi_from_ordered_value(satv, 800));
+        gsl_matrix_set(model->cont_imp, i, 0, banmi_from_ordered_value(satv, 800));
+        gsl_matrix_set(model->cont, i, 1, banmi_from_ordered_value(satm, 800));
+        gsl_matrix_set(model->cont_imp, i, 1, banmi_from_ordered_value(satm, 800));
+        gsl_matrix_set(model->cont, i, 2, (hgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont_imp, i, 2, (hgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont, i, 3, (cgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont_imp, i, 3, (cgpa+0.0)/4.0);
 
         i++;
     } 
@@ -91,13 +88,8 @@ main() {
     for (i = 0; i < NDiscrete; i++)
         gsl_vector_int_set(bds_disc, i, BdsDisc[i]);
 
-    gsl_vector_int *bds_orde = gsl_vector_int_alloc(NOrdered);
-    for (i = 0; i < NOrdered; i++)
-        gsl_vector_int_set(bds_orde, i, BdsOrde[i]);
-
-    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, bds_orde, NContinuous,
-                                           DPWeight,
-                                           LambdaA, LambdaB);
+    banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, NContinuous,
+                                           DPWeight, LambdaA, LambdaB);
     read_data_from_file(model);
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
@@ -115,10 +107,10 @@ main() {
 
         printf("%2d %2d %2d %2d %2d %4d %4d %4.2f %4.2f\n", 
                lan2, lan3, lan4, age, pri, 
-               gsl_matrix_int_get(model->orde_imp, i, 0),
-               gsl_matrix_int_get(model->orde_imp, i, 1),
-               gsl_matrix_get(model->cont_imp, i, 0) * 4.0,
-               gsl_matrix_get(model->cont_imp, i, 1) * 4.0);
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 0), 800),
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 1), 800),
+               gsl_matrix_get(model->cont_imp, i, 2) * 4.0,
+               gsl_matrix_get(model->cont_imp, i, 3) * 4.0);
     }
 
     printf("\n");
@@ -128,12 +120,11 @@ main() {
            gsl_vector_get(model->lambda, 2), 
            gsl_vector_get(model->lambda, 3), 
            gsl_vector_get(model->lambda, 4));
-    printf("kappa %4.2f %4.2f\n",
-           gsl_vector_get(model->kappa, 0), 
-           gsl_vector_get(model->kappa, 1));
-    printf("sigma %4.2f %4.2f\n",
+    printf("sigma %4.2f %4.2f %4.2f %4.2f\n",
            gsl_vector_get(model->sigma, 0), 
-           gsl_vector_get(model->sigma, 1));
+           gsl_vector_get(model->sigma, 1), 
+           gsl_vector_get(model->sigma, 2), 
+           gsl_vector_get(model->sigma, 3));
 
     return 0;
 }
