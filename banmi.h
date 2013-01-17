@@ -13,14 +13,12 @@
 #define BoundaryCorrection
 
 typedef struct {
-    // Data: multivariate discrete variable and univariate continuous variable,
-    // including storage to contain both the original observations (with missing
-    // fields) and the original data with imputed fields.
-    tab_t *disc, *disc_imp;      
+    // Data: original and with imputed values
+    gsl_matrix_int *disc, *disc_imp;
     gsl_matrix *cont, *cont_imp;
 
     // Latent variables
-    tab_t *x;
+    gsl_matrix_int *x;
     gsl_matrix *mu;
     gsl_vector *sigma, *lambda;
 

@@ -36,7 +36,7 @@ read_data_from_file(banmi_model_t *model) {
     FILE *f = fopen("data/flas1.txt", "r");
     while (fgetc(f) != '\n') ; // advance past the header line
 
-    int i = 0, disc_ix[2], lan2, lan3, lan4, age, pri, sex, mlat, flas, satv, 
+    int i = 0, lan2, lan3, lan4, age, pri, sex, mlat, flas, satv, 
         satm, eng, grd;
     double hgpa, cgpa;
     while (i < MaxRows) {
@@ -46,22 +46,16 @@ read_data_from_file(banmi_model_t *model) {
 
         if (feof(f)) break;
 
-        disc_ix[0] = i;
-        disc_ix[1] = 0; 
-        tab_set(model->disc, disc_ix, lan2);
-        tab_set(model->disc_imp, disc_ix, lan2);
-        disc_ix[1] = 1; 
-        tab_set(model->disc, disc_ix, lan3);
-        tab_set(model->disc_imp, disc_ix, lan3);
-        disc_ix[1] = 2; 
-        tab_set(model->disc, disc_ix, lan4);
-        tab_set(model->disc_imp, disc_ix, lan4);
-        disc_ix[1] = 3; 
-        tab_set(model->disc, disc_ix, (age > 0)? age - 1 : age);
-        tab_set(model->disc_imp, disc_ix, (age > 0)? age - 1 : age);
-        disc_ix[1] = 4; 
-        tab_set(model->disc, disc_ix, (pri > 0)? pri - 1 : pri);
-        tab_set(model->disc_imp, disc_ix, (pri > 0)? pri - 1 : pri);
+        gsl_matrix_int_set(model->disc, i, 0, lan2);
+        gsl_matrix_int_set(model->disc_imp, i, 0, lan2);
+        gsl_matrix_int_set(model->disc, i, 1, lan3);
+        gsl_matrix_int_set(model->disc_imp, i, 1, lan3);
+        gsl_matrix_int_set(model->disc, i, 2, lan4);
+        gsl_matrix_int_set(model->disc_imp, i, 2, lan4);
+        gsl_matrix_int_set(model->disc, i, 3, (age > 0)? age - 1 : age);
+        gsl_matrix_int_set(model->disc_imp, i, 3, (age > 0)? age - 1 : age);
+        gsl_matrix_int_set(model->disc, i, 4, (pri > 0)? pri - 1 : pri);
+        gsl_matrix_int_set(model->disc_imp, i, 4, (pri > 0)? pri - 1 : pri);
 
         gsl_matrix_set(model->cont, i, 0, banmi_from_ordered_value(satv, 800));
         gsl_matrix_set(model->cont_imp, i, 0, banmi_from_ordered_value(satv, 800));
@@ -96,17 +90,14 @@ main() {
     banmi_data_augmentation(rng, model, NIter);
 
     // show the result
-    int disc_ix[2], lan2, lan3, lan4, age, pri;
     for (i = 0; i < model->n_rows; i++) {
-        disc_ix[0] = i;
-        disc_ix[1] = 0; lan2 = tab_get(model->disc_imp, disc_ix);
-        disc_ix[1] = 1; lan3 = tab_get(model->disc_imp, disc_ix);
-        disc_ix[1] = 2; lan4 = tab_get(model->disc_imp, disc_ix);
-        disc_ix[1] = 3; age = tab_get(model->disc_imp, disc_ix) + 1;
-        disc_ix[1] = 4; pri = tab_get(model->disc_imp, disc_ix) + 1;
 
         printf("%2d %2d %2d %2d %2d %4d %4d %4.2f %4.2f\n", 
-               lan2, lan3, lan4, age, pri, 
+               gsl_matrix_int_get(model->disc_imp, i, 0),
+               gsl_matrix_int_get(model->disc_imp, i, 1),
+               gsl_matrix_int_get(model->disc_imp, i, 2),
+               gsl_matrix_int_get(model->disc_imp, i, 3) + 1,
+               gsl_matrix_int_get(model->disc_imp, i, 4) + 1,
                banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 0), 800),
                banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 1), 800),
                gsl_matrix_get(model->cont_imp, i, 2) * 4.0,
