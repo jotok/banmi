@@ -73,14 +73,14 @@ missingness_pattern(const banmi_model_t *model, int row) {
     int i, pattern = 0, mask = 1;
 
     for (i = 0; i < model->n_disc; i++) {
-        if (gsl_matrix_int_get(model->disc, row, i) < 0)
+        if (isnan(gsl_matrix_int_get(model->disc, row, i)))
             pattern |= mask;
 
         mask = mask << 1;
     }
 
     for (i = 0; i < model->n_cont; i++) {
-        if (gsl_matrix_get(model->cont, row, i) < 0)
+        if (isnan(gsl_matrix_get(model->cont, row, i)))
             pattern |= mask;
 
         mask = mask << 1;
@@ -166,7 +166,7 @@ void init_hyperparameters(banmi_model_t *model) {
     for (j = 0; j < model->n_cont; j++) {
         insert_index = 0;
         for (i = 0; i < model->n_rows; i++) {
-            if ((u = gsl_matrix_get(model->cont, i, j)) >= 0)
+            if (!isnan(u = gsl_matrix_get(model->cont, i, j)))
                 temp[insert_index++] = u;
         }
 
@@ -226,7 +226,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
         if (this_pattern & model->mask_missing_cont_data) {
             for (j = 0; j < model->n_cont; j++) {
-                if (gsl_matrix_get(model->cont, i, j) < 0)
+                if (isnan(gsl_matrix_get(model->cont, i, j)))
                     gsl_matrix_set(model->cont_imp, i, j, 
                                    gsl_ran_beta(rng, 
                                                 gsl_vector_get(model->mu_a, j), 
@@ -430,7 +430,7 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
         if (model->mis_pat[i] & model->mask_missing_cont_data) {
             // there are missing discrete values
             for (j = 0; j < model->n_disc; j++) {
-                if (gsl_matrix_int_get(model->disc, i, j) < 0) {
+                if (isnan(gsl_matrix_int_get(model->disc, i, j))) {
                     u = gsl_rng_uniform(rng);
                     if (u > 1 - gsl_vector_get(model->lambda, j)) {
                         gsl_matrix_int_set(model->disc_imp, i, j,
@@ -451,7 +451,7 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
             // there are missing continuous values
             for (j = 0; j < model->n_cont; j++) {
                 sigma = gsl_vector_get(model->sigma, j);
-                if (gsl_matrix_get(model->cont, i, j) < 0) {
+                if (isnan(gsl_matrix_get(model->cont, i, j))) {
                     mu = gsl_matrix_get(model->mu, i, j);
                     cont_val = mu + gsl_ran_gaussian(rng, sigma);
 #ifdef BoundaryCorrection

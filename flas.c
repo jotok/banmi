@@ -46,25 +46,25 @@ read_data_from_file(banmi_model_t *model) {
 
         if (feof(f)) break;
 
-        gsl_matrix_int_set(model->disc, i, 0, lan2);
-        gsl_matrix_int_set(model->disc_imp, i, 0, lan2);
-        gsl_matrix_int_set(model->disc, i, 1, lan3);
-        gsl_matrix_int_set(model->disc_imp, i, 1, lan3);
-        gsl_matrix_int_set(model->disc, i, 2, lan4);
-        gsl_matrix_int_set(model->disc_imp, i, 2, lan4);
-        gsl_matrix_int_set(model->disc, i, 3, (age > 0)? age - 1 : age);
-        gsl_matrix_int_set(model->disc_imp, i, 3, (age > 0)? age - 1 : age);
-        gsl_matrix_int_set(model->disc, i, 4, (pri > 0)? pri - 1 : pri);
-        gsl_matrix_int_set(model->disc_imp, i, 4, (pri > 0)? pri - 1 : pri);
+        gsl_matrix_int_set(model->disc, i, 0, (lan2 >= 0) ? lan2 : NAN);
+        gsl_matrix_int_set(model->disc_imp, i, 0, (lan2 > 0) ? lan2 : NAN);
+        gsl_matrix_int_set(model->disc, i, 1, (lan3 >= 0) ? lan3 : NAN);
+        gsl_matrix_int_set(model->disc_imp, i, 1, (lan3 >= 0) ? lan3 : NAN);
+        gsl_matrix_int_set(model->disc, i, 2, (lan4 >= 0) ? lan4 : NAN);
+        gsl_matrix_int_set(model->disc_imp, i, 2, (lan4 >= 0) ? lan4 : NAN);
+        gsl_matrix_int_set(model->disc, i, 3, (age >= 0)? age - 1 : NAN);
+        gsl_matrix_int_set(model->disc_imp, i, 3, (age >= 0)? age - 1 : NAN);
+        gsl_matrix_int_set(model->disc, i, 4, (pri >= 0)? pri - 1 : NAN);
+        gsl_matrix_int_set(model->disc_imp, i, 4, (pri >= 0)? pri - 1 : NAN);
 
-        gsl_matrix_set(model->cont, i, 0, banmi_from_ordered_value(satv, 800));
-        gsl_matrix_set(model->cont_imp, i, 0, banmi_from_ordered_value(satv, 800));
-        gsl_matrix_set(model->cont, i, 1, banmi_from_ordered_value(satm, 800));
-        gsl_matrix_set(model->cont_imp, i, 1, banmi_from_ordered_value(satm, 800));
-        gsl_matrix_set(model->cont, i, 2, (hgpa+0.0)/4.0);
-        gsl_matrix_set(model->cont_imp, i, 2, (hgpa+0.0)/4.0);
-        gsl_matrix_set(model->cont, i, 3, (cgpa+0.0)/4.0);
-        gsl_matrix_set(model->cont_imp, i, 3, (cgpa+0.0)/4.0);
+        gsl_matrix_set(model->cont, i, 0, (satv >= 0) ? banmi_from_ordered_value(satv, 800) : NAN);
+        gsl_matrix_set(model->cont_imp, i, 0, (satv >= 0) ? banmi_from_ordered_value(satv, 800) : NAN);
+        gsl_matrix_set(model->cont, i, 1, (satm > 0) ? banmi_from_ordered_value(satm, 800) : NAN);
+        gsl_matrix_set(model->cont_imp, i, 1, (satm >= 0) ? banmi_from_ordered_value(satm, 800) : NAN);
+        gsl_matrix_set(model->cont, i, 2, (hgpa >= 0) ? (hgpa+0.0)/4.0 : NAN);
+        gsl_matrix_set(model->cont_imp, i, 2, (hgpa >= 0) ? (hgpa+0.0)/4.0 : NAN);
+        gsl_matrix_set(model->cont, i, 3, (cgpa >= 0) ? (cgpa+0.0)/4.0 : NAN);
+        gsl_matrix_set(model->cont_imp, i, 3, (cgpa >= 0) ? (cgpa+0.0)/4.0 : NAN);
 
         i++;
     } 
