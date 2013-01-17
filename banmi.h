@@ -10,6 +10,8 @@
 
 #include "banmi_util.h"
 
+#define BoundaryCorrection
+
 typedef struct {
     // Data: multivariate discrete variable and univariate continuous variable,
     // including storage to contain both the original observations (with missing

@@ -263,9 +263,18 @@ kernel(const gsl_vector_int *bds_disc,
             result *= gsl_vector_get(lambda, i) / (gsl_vector_int_get(bds_disc, i) - 1);
     }
 
+    double ui, y, mean, sd;
     for (i = 0; i < u->size; i++) {
-        result *= gsl_ran_gaussian_pdf(gsl_vector_get(u, i) - gsl_vector_get(mu, i),
-                                       gsl_vector_get(sigma, i));
+        ui = gsl_vector_get(u, i);
+        mean = gsl_vector_get(mu, i);
+        sd = gsl_vector_get(sigma, i);
+        y = gsl_ran_gaussian_pdf(ui - mean, sd);
+#ifdef BoundaryCorrection
+        // for now, assume reflecting once in each direction is sufficient
+        y += gsl_ran_gaussian_pdf(2 - ui - mean, sd) + 
+             gsl_ran_gaussian_pdf(-ui - mean, sd);
+#endif
+        result *= y;
     }
 
     return result;
@@ -432,7 +441,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 void
 draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
     int i, j, choice, disc_ix[2];
-    double u, mu, sigma;
+    double u, mu, sigma, cont_val;
 
     for (i = model->n_complete; i < model->n_rows; i++) {
         disc_ix[0] = i;
@@ -463,8 +472,17 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
                 sigma = gsl_vector_get(model->sigma, j);
                 if (gsl_matrix_get(model->cont, i, j) < 0) {
                     mu = gsl_matrix_get(model->mu, i, j);
-                    gsl_matrix_set(model->cont_imp, i, j,
-                                   mu + gsl_ran_gaussian(rng, sigma));
+                    cont_val = mu + gsl_ran_gaussian(rng, sigma);
+#ifdef BoundaryCorrection
+                    cont_val = fmod(cont_val, 2.0);
+                    if (cont_val > 1)
+                        cont_val = 2 - cont_val;
+                    else if (-1 <= cont_val && cont_val < 0)
+                        cont_val = -cont_val;
+                    else if (cont_val < -1)
+                        cont_val = cont_val - 2;
+#endif
+                    gsl_matrix_set(model->cont_imp, i, j, cont_val);
                 }
             }
         }
