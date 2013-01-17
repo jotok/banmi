@@ -292,6 +292,51 @@ void order_blocks(int *values, const int *by, int n_blocks, int block_size) {
     free(by_copy);
 }
 
+int _partition_blocks_d(double *values, int *by, int left, int right, int pivot, int block_size) {
+    int i, pivot_value = by[pivot];
+    double temp;
+    
+    Swap(by[pivot], by[right], temp)
+    for (i = 0; i < block_size; i++) 
+        Swap(values[pivot*block_size + i], values[right*block_size + i], temp)
+
+    int j, store_index = left;
+    for (i = left; i < right; i++) {
+        if (by[i] < pivot_value) {
+            Swap(by[i], by[store_index], temp)
+            for (j = 0; j < block_size; j++)
+                Swap(values[i*block_size + j], values[store_index*block_size + j], temp)
+            store_index++;
+        }
+    }
+
+    Swap(by[store_index], by[right], temp)
+    for (i = 0; i < block_size; i++) 
+        Swap(values[store_index*block_size + i], values[right*block_size + i], temp)
+
+    return store_index;
+}
+
+void _order_blocks_d(double *values, int *by, int left, int right, int block_size) {
+    if (left < right) {
+        int pivot = (right + left) / 2;
+        pivot = _partition_blocks_d(values, by, left, right, pivot, block_size);
+        _order_blocks_d(values, by, left, pivot - 1, block_size);
+        _order_blocks_d(values, by, pivot + 1, right, block_size);
+    }
+}
+
+void order_blocks_d(double *values, const int *by, int n_blocks, int block_size) {
+    int i, *by_copy = malloc(n_blocks * sizeof(int));
+
+    for (i = 0; i < n_blocks; i++) 
+        by_copy[i] = by[i];
+
+    _order_blocks_d(values, by_copy, 0, n_blocks-1, block_size);
+
+    free(by_copy);
+}
+
 int sample(gsl_rng *rng, int n, const int *weight) {
     double cumprob = 0.0;
     int i, total = 0;
@@ -345,116 +390,4 @@ int
 cumsample_d(gsl_rng *rng, int n, const double *cumweights) {
     double u = gsl_rng_uniform(rng) * cumweights[n-1];
     return binary_search_d(u, cumweights, 0, n);
-}
-
-void
-swap_rows_int(gsl_matrix_int *mat, int i, int j) {
-    int k;
-    double temp;
-
-    for (k = 0; k < mat->size2; k++) {
-        temp = gsl_matrix_int_get(mat, i, k);
-        gsl_matrix_int_set(mat, i, k, gsl_matrix_int_get(mat, j, k));
-        gsl_matrix_int_set(mat, j, k, temp);
-    }
-}
-
-int 
-_partition_rows_int(gsl_matrix_int *mat, int *by, int left, int right, int pivot) {
-    int i, temp, pivot_value = by[pivot];
-    
-    Swap(by[pivot], by[right], temp)
-    swap_rows_int(mat, pivot, right);
-
-    int store_index = left;
-    for (i = left; i < right; i++) {
-        if (by[i] < pivot_value) {
-            Swap(by[i], by[store_index], temp)
-            swap_rows_int(mat, i, store_index);
-            store_index++;
-        }
-    }
-
-    Swap(by[store_index], by[right], temp)
-    swap_rows_int(mat, store_index, right);
-
-    return store_index;
-}
-
-void 
-_order_rows_int(gsl_matrix_int *mat, int *by, int left, int right) {
-    if (left < right) {
-        int pivot = (right + left) / 2;
-        pivot = _partition_rows_int(mat, by, left, right, pivot);
-        _order_rows_int(mat, by, left, pivot - 1);
-        _order_rows_int(mat, by, pivot + 1, right);
-    }
-}
-
-void 
-order_rows_int(gsl_matrix_int *mat, const int *by, int n_rows) {
-    int i, *by_copy = malloc(mat->size1 * sizeof(int));
-
-    for (i = 0; i < mat->size1; i++) 
-        by_copy[i] = by[i];
-
-    _order_rows_int(mat, by_copy, 0, n_rows - 1);
-
-    free(by_copy);
-}
-
-void
-swap_rows(gsl_matrix *mat, int i, int j) {
-    int k;
-    double temp;
-
-    for (k = 0; k < mat->size2; k++) {
-        temp = gsl_matrix_get(mat, i, k);
-        gsl_matrix_set(mat, i, k, gsl_matrix_get(mat, j, k));
-        gsl_matrix_set(mat, j, k, temp);
-    }
-}
-
-int 
-_partition_rows(gsl_matrix *mat, int *by, int left, int right, int pivot) {
-    int i, temp, pivot_value = by[pivot];
-    
-    Swap(by[pivot], by[right], temp)
-    swap_rows(mat, pivot, right);
-
-    int store_index = left;
-    for (i = left; i < right; i++) {
-        if (by[i] < pivot_value) {
-            Swap(by[i], by[store_index], temp)
-            swap_rows(mat, i, store_index);
-            store_index++;
-        }
-    }
-
-    Swap(by[store_index], by[right], temp)
-    swap_rows(mat, store_index, right);
-
-    return store_index;
-}
-
-void 
-_order_rows(gsl_matrix *mat, int *by, int left, int right) {
-    if (left < right) {
-        int pivot = (right + left) / 2;
-        pivot = _partition_rows(mat, by, left, right, pivot);
-        _order_rows(mat, by, left, pivot - 1);
-        _order_rows(mat, by, pivot + 1, right);
-    }
-}
-
-void 
-order_rows(gsl_matrix *mat, const int *by, int n_rows) {
-    int i, *by_copy = malloc(mat->size1 * sizeof(int));
-
-    for (i = 0; i < mat->size1; i++) 
-        by_copy[i] = by[i];
-
-    _order_rows(mat, by_copy, 0, n_rows - 1);
-
-    free(by_copy);
 }

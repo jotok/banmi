@@ -126,8 +126,8 @@ sort_data_by_missingness_pattern(banmi_model_t *model) {
 
     order_blocks(model->disc->dat, model->mis_pat, model->n_rows, model->n_disc);
     order_blocks(model->disc_imp->dat, model->mis_pat, model->n_rows, model->n_disc);
-    order_rows(model->cont, model->mis_pat, model->n_rows);
-    order_rows(model->cont_imp, model->mis_pat, model->n_rows);
+    order_blocks_d(model->cont->data, model->mis_pat, model->n_rows, model->cont->tda);
+    order_blocks_d(model->cont_imp->data, model->mis_pat, model->n_rows, model->cont_imp->tda);
     order(model->mis_pat, model->mis_pat, model->n_rows);
 
     model->n_complete = n_complete;

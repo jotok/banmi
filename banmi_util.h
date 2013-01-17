@@ -29,8 +29,7 @@ tab_t* new_conditional_tab(const tab_t *t, const int *free_margins, const int *c
 void order(int *values, const int *by, int n);
 void order_d(double *values, const int *by, int n);
 void order_blocks(int *values, const int *by, int n_blocks, int block_size);
-void order_rows_int(gsl_matrix_int *mat, const int *by, int n_rows);
-void order_rows(gsl_matrix *mat, const int *by, int n_rows);
+void order_blocks_d(double *values, const int *by, int n_blocks, int block_size);
 
 int sample(gsl_rng *rng, int n, const int *weight);
 int sample_d(gsl_rng *rng, int n, const double *weight);
