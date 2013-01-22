@@ -66,6 +66,22 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont,
     return model;
 }
 
+// Copy values from from foo to foo_imp
+//
+void
+init_imputed_data(banmi_model_t *model) {
+    int i, j;
+    
+    for (i = 0; i < model->n_rows; i++) {
+        for (j = 0; j < model->cont->size2; j++)
+            gsl_matrix_set(model->cont_imp, i, j, gsl_matrix_get(model->cont, i, j));
+
+        for (j = 0; j < model->disc->size2; j++)
+            gsl_matrix_int_set(model->disc_imp, i, j, 
+                               gsl_matrix_int_get(model->disc, i, j));
+    }
+}
+
 // Compute the missingness pattern for the given row of data.
 //
 int 
@@ -474,6 +490,7 @@ void
 banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter) {
 
     // initialize the model
+    init_imputed_data(model);
     sort_data_by_missingness_pattern(model);
     init_hyperparameters(model);
     init_missing_values(rng, model);
