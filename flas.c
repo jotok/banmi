@@ -68,6 +68,64 @@ read_data_from_file(banmi_model_t *model) {
 }
 
 int
+count_unique_modes(banmi_model_t *model) {
+    gsl_matrix *mu = gsl_matrix_alloc(model->n_rows, model->n_cont);
+    gsl_matrix_int *x = gsl_matrix_int_alloc(model->n_rows, model->n_disc);
+
+    int i, j, k;
+
+    // copy the first row of mu, x
+    for (j = 0; j < model->n_cont; j++)
+        gsl_matrix_set(mu, 0, j, gsl_matrix_get(model->mu, 0, j));
+
+    for (j = 0; j < model->n_disc; j++)
+        gsl_matrix_int_set(x, 0, j, gsl_matrix_int_get(model->x, 0, j));
+
+    int match_found, insert_index = 1;
+
+    for (i = 1; i < model->n_rows; i++) {
+
+        for (k = 0; k < insert_index; k++) {
+            match_found = 1;
+
+            for (j = 0; j < model->n_cont; j++) {
+                if (gsl_matrix_get(model->mu, i, j) != gsl_matrix_get(mu, k, j)) {
+                    match_found = 0;
+                    break;
+                }
+            }
+
+            for (j = 0; j < model->n_disc; j++) {
+                if (gsl_matrix_int_get(model->x, i, j) != gsl_matrix_int_get(x, k, j)) {
+                    match_found = 0;
+                    break;
+                }
+            }
+
+            if (match_found)
+                break;
+        }
+
+        if (!match_found) {
+            for (j = 0; j < model->n_cont; j++)
+                gsl_matrix_set(mu, insert_index, j, 
+                               gsl_matrix_get(model->mu, i, j));
+
+            for (j = 0; j < model->n_disc; j++)
+                gsl_matrix_int_set(x, insert_index, j, 
+                                   gsl_matrix_int_get(model->x, i, j));
+
+            insert_index++;
+        }
+    }
+
+    gsl_matrix_free(mu);
+    gsl_matrix_int_free(x);
+
+    return insert_index;
+}
+
+int
 main() {
     gsl_vector_int *bds_disc = gsl_vector_int_alloc(NDiscrete);
     int i;
@@ -109,6 +167,7 @@ main() {
            gsl_vector_get(model->sigma, 1), 
            gsl_vector_get(model->sigma, 2), 
            gsl_vector_get(model->sigma, 3));
+    printf("unique modes: %d\n", count_unique_modes(model));
 
     return 0;
 }
