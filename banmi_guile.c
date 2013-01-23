@@ -58,11 +58,33 @@ free_model(SCM s_model) {
     return 0;
 }
 
+SCM
+get_discrete(SCM s_model, SCM s_row, SCM s_col) {
+    scm_assert_smob_type(model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+       
+    return scm_from_int(gsl_matrix_int_get(model->disc,
+                                           scm_to_int(s_row),
+                                           scm_to_int(s_col)));
+}
+
+SCM
+get_continuous(SCM s_model, SCM s_row, SCM s_col) {
+    scm_assert_smob_type(model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+
+    return scm_from_double(gsl_matrix_get(model->cont,
+                                          scm_to_double(s_row),
+                                          scm_to_double(s_col)));
+}
+
+
 void
 init_model_type(void) {
     model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
     scm_set_smob_free(model_tag, free_model);
 
     scm_c_define_gsubr("new-model", 6, 0, 0, new_model);
+    scm_c_define_gsubr("get-discrete", 3, 0, 0, get_discrete);
+    scm_c_define_gsubr("get-continuous", 3, 0, 0, get_continuous);
 }
-
