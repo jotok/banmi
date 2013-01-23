@@ -1,3 +1,6 @@
+#ifndef BanmiUtil_h
+#define BanmiUtil_h
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -33,3 +36,5 @@ void order_blocks_d(double*, const int*, int, int);
 
 int sample(gsl_rng*, int, const int*);
 int sample_d(gsl_rng*, int, const double*);
+
+#endif

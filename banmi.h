@@ -1,3 +1,6 @@
+#ifndef Banmi_h
+#define Banmi_h
+
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -40,3 +43,5 @@ void banmi_data_augmentation(gsl_rng*, banmi_model_t*, int);
 
 int banmi_to_ordered_value(double, int);
 double banmi_from_ordered_value(int, int);
+
+#endif
