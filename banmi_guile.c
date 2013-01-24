@@ -78,6 +78,17 @@ get_continuous(SCM s_model, SCM s_row, SCM s_col) {
                                           scm_to_double(s_col)));
 }
 
+SCM
+load_data(SCM s_model, SCM s_row, SCM s_rest) {
+    scm_assert_smob_type(model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+    int row = scm_to_int(s_row);
+    int i, len = scm_to_int(scm_length(s_rest));
+
+    for (i = 0; i < len; i++) {
+    }
+}
+
 
 void
 init_model_type(void) {
@@ -87,4 +98,5 @@ init_model_type(void) {
     scm_c_define_gsubr("new-model", 6, 0, 0, new_model);
     scm_c_define_gsubr("get-discrete", 3, 0, 0, get_discrete);
     scm_c_define_gsubr("get-continuous", 3, 0, 0, get_continuous);
+    scm_c_define_gsubr("load-data", 1, 0, 1, load_data);
 }
