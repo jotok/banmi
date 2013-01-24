@@ -6,9 +6,9 @@ CC=c99
 
 $(P): $(OBJECTS)
 
-guile:
-	$(CC) `pkg-config --cflags guile-1.8` -shared -o libbanmi-guile.so \
-		$(OBJECTS) -fPIC banmi_guile.c $(LDLIBS)
+thit:
+	$(CC) `pkg-config --cflags guile-1.8` -shared -o libthit.so \
+		$(OBJECTS) -fPIC thit.c $(LDLIBS)
 
 clean: $(OBJECTS)
 	rm -f $(P) $(OBJECTS) gmon.out libbanmi-guile.so

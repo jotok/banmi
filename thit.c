@@ -103,7 +103,7 @@ set_continuous_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
 }
 
 void
-init_banmi(void) {
+banmi_thit(void) {
     model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
     scm_set_smob_free(model_tag, free_model);
 

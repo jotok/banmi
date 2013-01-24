@@ -1,4 +1,4 @@
-(load-extension "./libbanmi-guile" "init_banmi")
+(load-extension "./libthit" "banmi_thit")
 
 (define *max-rows* 300)
 (define *bds-discrete* '(2 2 2 2 3))
