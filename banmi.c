@@ -504,3 +504,76 @@ banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter) {
         draw_new_missing_values(rng, model);
     }
 }
+
+void
+banmi_print_shape_variables(banmi_model_t *model) {
+    int i;
+    printf("lambda ");
+
+    for (i = 0; i < model->n_disc; i++)
+        printf("%4.2f ", gsl_vector_get(model->lambda, i));
+
+    printf("\nsigma ");
+    for (i = 0; i < model->n_cont; i++)
+        printf("%4.2f ", gsl_vector_get(model->sigma, i));
+
+    printf("\n");
+}
+
+int
+banmi_count_unique_modes(banmi_model_t *model) {
+    gsl_matrix *mu = gsl_matrix_alloc(model->n_rows, model->n_cont);
+    gsl_matrix_int *x = gsl_matrix_int_alloc(model->n_rows, model->n_disc);
+
+    int i, j, k;
+
+    // copy the first row of mu, x
+    for (j = 0; j < model->n_cont; j++)
+        gsl_matrix_set(mu, 0, j, gsl_matrix_get(model->mu, 0, j));
+
+    for (j = 0; j < model->n_disc; j++)
+        gsl_matrix_int_set(x, 0, j, gsl_matrix_int_get(model->x, 0, j));
+
+    int match_found, insert_index = 1;
+
+    for (i = 1; i < model->n_rows; i++) {
+
+        for (k = 0; k < insert_index; k++) {
+            match_found = 1;
+
+            for (j = 0; j < model->n_cont; j++) {
+                if (gsl_matrix_get(model->mu, i, j) != gsl_matrix_get(mu, k, j)) {
+                    match_found = 0;
+                    break;
+                }
+            }
+
+            for (j = 0; j < model->n_disc; j++) {
+                if (gsl_matrix_int_get(model->x, i, j) != gsl_matrix_int_get(x, k, j)) {
+                    match_found = 0;
+                    break;
+                }
+            }
+
+            if (match_found)
+                break;
+        }
+
+        if (!match_found) {
+            for (j = 0; j < model->n_cont; j++)
+                gsl_matrix_set(mu, insert_index, j, 
+                               gsl_matrix_get(model->mu, i, j));
+
+            for (j = 0; j < model->n_disc; j++)
+                gsl_matrix_int_set(x, insert_index, j, 
+                                   gsl_matrix_int_get(model->x, i, j));
+
+            insert_index++;
+        }
+    }
+
+    gsl_matrix_free(mu);
+    gsl_matrix_int_free(x);
+
+    return insert_index;
+}

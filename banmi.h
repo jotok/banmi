@@ -1,5 +1,9 @@
+#ifndef BanmiH
+#define BanmiH
+
 #include <assert.h>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <gsl/gsl_matrix.h>
@@ -35,8 +39,22 @@ typedef struct {
 
 } banmi_model_t;
 
-banmi_model_t* new_banmi_model(int, gsl_vector_int*, int, double, double, double);
-void banmi_data_augmentation(gsl_rng*, banmi_model_t*, int);
+banmi_model_t* 
+new_banmi_model(int, gsl_vector_int*, int, double, double, double);
 
-int banmi_to_ordered_value(double, int);
-double banmi_from_ordered_value(int, int);
+void 
+banmi_data_augmentation(gsl_rng*, banmi_model_t*, int);
+
+int 
+banmi_to_ordered_value(double, int);
+
+double 
+banmi_from_ordered_value(int, int);
+
+void
+banmi_print_shape_variables(banmi_model_t*);
+
+int
+banmi_count_unique_modes(banmi_model_t*);
+
+#endif
