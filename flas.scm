@@ -9,3 +9,6 @@
 
 (define model (new-model *max-rows* *bds-discrete* *n-continuous*
                          *dp-weight* *lambda-a* *lambda-b*))
+
+(display (get-imputed-data model))
+(newline)

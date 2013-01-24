@@ -44,6 +44,7 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont,
     model->lambda_a = lambda_a;
     model->lambda_b = lambda_b;
 
+    model->n_rows = 0;
     model->bds_disc = bds_disc;
     model->n_disc = bds_disc->size;
     model->n_cont = n_cont;
