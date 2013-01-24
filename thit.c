@@ -144,6 +144,16 @@ thit_get_imputed_data(SCM s_model) {
     return s_rows;
 }
 
+SCM
+thit_load_row_x(SCM s_model, SCM s_varargs) {
+    scm_assert_smob_type(thit_model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+
+    // TODO complete implementation
+
+    return SCM_BOOL_F;
+}
+
 void
 banmi_thit(void) {
     thit_model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
@@ -156,4 +166,5 @@ banmi_thit(void) {
     scm_c_define_gsubr("get-lambda", 1, 0, 0, thit_get_lambda);
     scm_c_define_gsubr("get-sigma", 1, 0, 0, thit_get_sigma);
     scm_c_define_gsubr("get-imputed-data", 1, 0, 0, thit_get_imputed_data);
+    scm_c_define_gsubr("load-row!", 1, 0, 1, thit_load_row_x);
 }
