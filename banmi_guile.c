@@ -59,7 +59,7 @@ free_model(SCM s_model) {
 }
 
 SCM
-get_discrete(SCM s_model, SCM s_row, SCM s_col) {
+get_discrete_value(SCM s_model, SCM s_row, SCM s_col) {
     scm_assert_smob_type(model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
        
@@ -69,34 +69,47 @@ get_discrete(SCM s_model, SCM s_row, SCM s_col) {
 }
 
 SCM
-get_continuous(SCM s_model, SCM s_row, SCM s_col) {
+set_discrete_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
+    scm_assert_smob_type(model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+
+    gsl_matrix_int_set(model->disc, scm_to_int(s_row),
+                                    scm_to_int(s_col),
+                                    scm_to_int(s_val));
+
+    return SCM_BOOL_T;
+}
+
+SCM
+get_continuous_value(SCM s_model, SCM s_row, SCM s_col) {
     scm_assert_smob_type(model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
 
     return scm_from_double(gsl_matrix_get(model->cont,
-                                          scm_to_double(s_row),
-                                          scm_to_double(s_col)));
+                                          scm_to_int(s_row),
+                                          scm_to_int(s_col)));
 }
 
 SCM
-load_data(SCM s_model, SCM s_row, SCM s_rest) {
+set_continuous_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
     scm_assert_smob_type(model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
-    int row = scm_to_int(s_row);
-    int i, len = scm_to_int(scm_length(s_rest));
 
-    for (i = 0; i < len; i++) {
-    }
+    gsl_matrix_set(model->cont, scm_to_int(s_row),
+                                scm_to_int(s_col),
+                                scm_to_double(s_val));
+
+    return SCM_BOOL_T;
 }
 
-
 void
-init_model_type(void) {
+init_banmi(void) {
     model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
     scm_set_smob_free(model_tag, free_model);
 
     scm_c_define_gsubr("new-model", 6, 0, 0, new_model);
-    scm_c_define_gsubr("get-discrete", 3, 0, 0, get_discrete);
-    scm_c_define_gsubr("get-continuous", 3, 0, 0, get_continuous);
-    scm_c_define_gsubr("load-data", 1, 0, 1, load_data);
+    scm_c_define_gsubr("get-discrete-value", 3, 0, 0, get_discrete_value);
+    scm_c_define_gsubr("set-discrete-value!", 4, 0, 0, set_discrete_value_x);
+    scm_c_define_gsubr("get-continuous-value", 3, 0, 0, get_continuous_value);
+    scm_c_define_gsubr("set-continuous-value!", 4, 0, 0, set_continuous_value_x);
 }
