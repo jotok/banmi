@@ -4,10 +4,10 @@
 #include "banmi.h"
 #include "banmi_util.h"
 
-static scm_t_bits model_tag;
+static scm_t_bits thit_model_tag;
 
 static SCM
-new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
+thit_new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
           SCM s_lambda_a, SCM s_lambda_b) 
 {
     int max_rows = scm_to_int(s_max_rows);
@@ -29,13 +29,13 @@ new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
                                            lambda_a, lambda_b);
 
     SCM smob;
-    SCM_NEWSMOB(smob, model_tag, model);
+    SCM_NEWSMOB(smob, thit_model_tag, model);
 
     return smob;
 }
 
 static size_t
-free_model(SCM s_model) {
+thit_free_model(SCM s_model) {
     banmi_model_t *model = (banmi_model_t*) SCM_SMOB_DATA(s_model);
 
     gsl_matrix_int_free(model->disc);
@@ -59,8 +59,8 @@ free_model(SCM s_model) {
 }
 
 SCM
-get_discrete_value(SCM s_model, SCM s_row, SCM s_col) {
-    scm_assert_smob_type(model_tag, s_model);
+thit_get_discrete_value(SCM s_model, SCM s_row, SCM s_col) {
+    scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
        
     return scm_from_int(gsl_matrix_int_get(model->disc,
@@ -69,8 +69,8 @@ get_discrete_value(SCM s_model, SCM s_row, SCM s_col) {
 }
 
 SCM
-set_discrete_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
-    scm_assert_smob_type(model_tag, s_model);
+thit_set_discrete_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
+    scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
 
     gsl_matrix_int_set(model->disc, scm_to_int(s_row),
@@ -81,8 +81,8 @@ set_discrete_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
 }
 
 SCM
-get_continuous_value(SCM s_model, SCM s_row, SCM s_col) {
-    scm_assert_smob_type(model_tag, s_model);
+thit_get_continuous_value(SCM s_model, SCM s_row, SCM s_col) {
+    scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
 
     return scm_from_double(gsl_matrix_get(model->cont,
@@ -91,8 +91,8 @@ get_continuous_value(SCM s_model, SCM s_row, SCM s_col) {
 }
 
 SCM
-set_continuous_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
-    scm_assert_smob_type(model_tag, s_model);
+thit_set_continuous_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
+    scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
 
     gsl_matrix_set(model->cont, scm_to_int(s_row),
@@ -104,12 +104,12 @@ set_continuous_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
 
 void
 banmi_thit(void) {
-    model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
-    scm_set_smob_free(model_tag, free_model);
+    thit_model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
+    scm_set_smob_free(thit_model_tag, thit_free_model);
 
-    scm_c_define_gsubr("new-model", 6, 0, 0, new_model);
-    scm_c_define_gsubr("get-discrete-value", 3, 0, 0, get_discrete_value);
-    scm_c_define_gsubr("set-discrete-value!", 4, 0, 0, set_discrete_value_x);
-    scm_c_define_gsubr("get-continuous-value", 3, 0, 0, get_continuous_value);
-    scm_c_define_gsubr("set-continuous-value!", 4, 0, 0, set_continuous_value_x);
+    scm_c_define_gsubr("new-model", 6, 0, 0, thit_new_model);
+    scm_c_define_gsubr("get-discrete-value", 3, 0, 0, thit_get_discrete_value);
+    scm_c_define_gsubr("set-discrete-value!", 4, 0, 0, thit_set_discrete_value_x);
+    scm_c_define_gsubr("get-continuous-value", 3, 0, 0, thit_get_continuous_value);
+    scm_c_define_gsubr("set-continuous-value!", 4, 0, 0, thit_set_continuous_value_x);
 }
