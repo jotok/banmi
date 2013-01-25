@@ -61,22 +61,26 @@ thit_free_model(SCM s_model) {
 
 SCM
 thit_scm_from_vector(gsl_vector *v) {
-    SCM list = SCM_EOL;
+    SCM s_vector = scm_c_make_vector(v->size, SCM_BOOL_F);
+
     int i;
-    for (i = v->size; --i;) {
-        list = scm_cons(scm_from_double(gsl_vector_get(v, i)), list);
-    }
-    return list;
+    for (i = 0; i < v->size; i++)
+        scm_vector_set_x(s_vector, scm_from_int(i),
+                         scm_from_double(gsl_vector_get(v, i)));
+
+    return s_vector;
 }
 
 SCM
 thit_scm_from_vector_int(gsl_vector_int *v) {
-    SCM list = SCM_EOL;
+    SCM s_vector = scm_c_make_vector(v->size, SCM_BOOL_F);
+
     int i;
-    for (i = v->size; --i;) {
-        list = scm_cons(scm_from_int(gsl_vector_int_get(v, i)), list);
-    }
-    return list;
+    for (i = 0; i < v->size; i++)
+        scm_vector_set_x(s_vector, scm_from_int(i),
+                         scm_from_int(gsl_vector_int_get(v, i)));
+
+    return s_vector;
 }
 
 
