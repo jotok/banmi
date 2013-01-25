@@ -1,12 +1,14 @@
 #include <libguile.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_rng.h>
 #include <math.h>
 #include "banmi.h"
 #include "banmi_util.h"
 
 static scm_t_bits thit_model_tag;
 static SCM thit_error;
+static gsl_rng *rng;
 
 static SCM
 thit_new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
@@ -181,10 +183,29 @@ thit_load_row_x(SCM s_model, SCM s_varargs) {
     return SCM_BOOL_T;
 }
 
+SCM
+thit_data_augmentation_x(SCM s_model, SCM s_n_iter) {
+    scm_assert_smob_type(thit_model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+    int n_iter = scm_to_int(s_n_iter);
+    banmi_data_augmentation(rng, model, n_iter);
+    return SCM_BOOL_T;
+}
+
+SCM
+thit_count_unique_modes(SCM s_model) {
+    scm_assert_smob_type(thit_model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+    return scm_from_int(banmi_count_unique_modes(model));
+}
+
 void
 banmi_thit(void) {
     thit_model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
     scm_set_smob_free(thit_model_tag, thit_free_model);
+
+    rng = gsl_rng_alloc(gsl_rng_mt19937);
+    gsl_rng_set(rng, time(NULL));
 
     thit_error = scm_from_locale_symbol("thit-error");
 
@@ -194,4 +215,6 @@ banmi_thit(void) {
     scm_c_define_gsubr("get-data", 1, 0, 0, thit_get_data);
     scm_c_define_gsubr("get-imputed-data", 1, 0, 0, thit_get_imputed_data);
     scm_c_define_gsubr("load-row!", 1, 0, 1, thit_load_row_x);
+    scm_c_define_gsubr("data-augmentation!", 2, 0, 0, thit_data_augmentation_x);
+    scm_c_define_gsubr("count-unique-modes", 1, 0, 0, thit_count_unique_modes);
 }
