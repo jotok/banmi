@@ -21,6 +21,12 @@
       ((eof-object? line))
       (fn line)))
 
+(define (continuous->ordered x max-value)
+  (floor (* (1+ max-value) x)))
+
+(define (ordered->continuous o max-value)
+  (/ (+ o 0.5) (1+ max-value)))
+
 ;; run the multiple imputation
 
 (define model (new-model *max-rows* *bds-discrete* *n-continuous*
@@ -34,7 +40,14 @@
     (lambda (line)
       (let-values (((lan2 lan3 lan4 age pri sex mlat flas satv satm eng hgpa cgpa grd)
                     (apply values (line->numbers line))))
-        (load-row! model lan2 lan3 lan4 age pri satv satm hgpa cgpa)))))
+        (load-row! model 
+                   lan2 lan3 lan4 
+                   (if (>= age 0) (1- age) -1) 
+                   (if (>= pri 0) (1- pri) -1) 
+                   (if (>= satv 0) (ordered->continuous satv 800) -1)
+                   (if (>= satm 0) (ordered->continuous satm 800) -1)
+                   (if (>= hgpa 0) (/ hgpa 4.0) -1) 
+                   (if (>= cgpa 0) (/ cgpa 4.0) -1))))))
 
 (with-input-from-file "data/flas1.txt" load-data-from-file)
 
