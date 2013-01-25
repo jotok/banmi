@@ -83,6 +83,30 @@ thit_scm_from_vector_int(gsl_vector_int *v) {
     return s_vector;
 }
 
+SCM
+thit_scm_from_banmi_data(gsl_matrix_int *disc, gsl_matrix *cont, int n_rows) {
+    SCM s_rows = scm_c_make_vector(n_rows, SCM_BOOL_F);
+
+    int i, j;
+    for (i = 0; i < n_rows; i++) {
+        SCM this_row = scm_c_make_vector(disc->size2 + cont->size2, SCM_BOOL_F);
+
+        for (j = 0; j < disc->size2; j++) {
+            scm_vector_set_x(this_row, scm_from_int(j),
+                             scm_from_int(gsl_matrix_int_get(disc, i, j)));
+        }
+
+        for (j = 0; j < cont->size2; j++) {
+            scm_vector_set_x(this_row, scm_from_int(j + disc->size2),
+                             scm_from_double(gsl_matrix_get(cont, i, j)));
+        }
+
+        scm_vector_set_x(s_rows, scm_from_int(i), this_row);
+    }
+
+    return s_rows;
+}
+
 
 SCM
 thit_get_lambda(SCM s_model) {
@@ -98,31 +122,18 @@ thit_get_sigma(SCM s_model) {
     return thit_scm_from_vector(model->sigma);
 }
 
+SCM
+thit_get_data(SCM s_model) {
+    scm_assert_smob_type(thit_model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+    return thit_scm_from_banmi_data(model->disc, model->cont, model->n_rows);
+}
 
 SCM
 thit_get_imputed_data(SCM s_model) {
     scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
-
-    SCM s_rows = scm_c_make_vector(model->n_rows, SCM_BOOL_F);
-    int i, j;
-    for (i = 0; i < model->n_rows; i++) {
-        SCM this_row = scm_c_make_vector(model->n_disc + model->n_cont, SCM_BOOL_F);
-
-        for (j = 0; j < model->n_disc; j++) {
-            scm_vector_set_x(this_row, scm_from_int(j),
-                             scm_from_int(gsl_matrix_int_get(model->disc_imp, i, j)));
-        }
-
-        for (j = 0; j < model->n_cont; j++) {
-            scm_vector_set_x(this_row, scm_from_int(j + model->n_disc),
-                             scm_from_double(gsl_matrix_get(model->cont_imp, i, j)));
-        }
-
-        scm_vector_set_x(s_rows, scm_from_int(i), this_row);
-    }
-
-    return s_rows;
+    return thit_scm_from_banmi_data(model->disc_imp, model->cont_imp, model->n_rows);
 }
 
 // Load one of data into the model. The vararg should be a list of values with
@@ -178,6 +189,7 @@ banmi_thit(void) {
     scm_c_define_gsubr("new-model", 6, 0, 0, thit_new_model);
     scm_c_define_gsubr("get-lambda", 1, 0, 0, thit_get_lambda);
     scm_c_define_gsubr("get-sigma", 1, 0, 0, thit_get_sigma);
+    scm_c_define_gsubr("get-data", 1, 0, 0, thit_get_data);
     scm_c_define_gsubr("get-imputed-data", 1, 0, 0, thit_get_imputed_data);
     scm_c_define_gsubr("load-row!", 1, 0, 1, thit_load_row_x);
 }
