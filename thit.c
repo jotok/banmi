@@ -1,6 +1,7 @@
 #include <libguile.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
+#include <math.h>
 #include "banmi.h"
 #include "banmi_util.h"
 
@@ -163,15 +164,16 @@ thit_load_row_x(SCM s_model, SCM s_varargs) {
                       scm_list_2(scm_from_int(n_col), scm_from_int(n_args)),
                       SCM_BOOL_F);
 
-    int j;
+    int j, ival;
     for (j = 0; j < model->n_disc; j++) {
-        gsl_matrix_int_set(model->disc, model->n_rows, j,
-                           scm_to_int(scm_list_ref(s_varargs, scm_from_int(j))));
+        ival = scm_to_int(scm_list_ref(s_varargs, scm_from_int(j)));
+        gsl_matrix_int_set(model->disc, model->n_rows, j, ival);
     }
 
+    double dval;
     for (j = 0; j < model->n_cont; j++) {
-        gsl_matrix_set(model->cont, model->n_rows, j,
-                       scm_to_double(scm_list_ref(s_varargs, scm_from_int(j + model->n_disc))));
+        dval = scm_to_double(scm_list_ref(s_varargs, scm_from_int(j + model->n_disc)));
+        gsl_matrix_set(model->cont, model->n_rows, j, dval);
     }
 
     model->n_rows++;
