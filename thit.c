@@ -5,6 +5,7 @@
 #include "banmi_util.h"
 
 static scm_t_bits thit_model_tag;
+static SCM thit_error;
 
 static SCM
 thit_new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
@@ -95,30 +96,6 @@ thit_get_sigma(SCM s_model) {
 
 
 SCM
-thit_load_discrete_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
-    scm_assert_smob_type(thit_model_tag, s_model);
-    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
-
-    gsl_matrix_int_set(model->disc, scm_to_int(s_row),
-                                    scm_to_int(s_col),
-                                    scm_to_int(s_val));
-
-    return SCM_BOOL_T;
-}
-
-SCM
-thit_load_continuous_value_x(SCM s_model, SCM s_row, SCM s_col, SCM s_val) {
-    scm_assert_smob_type(thit_model_tag, s_model);
-    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
-
-    gsl_matrix_set(model->cont, scm_to_int(s_row),
-                                scm_to_int(s_col),
-                                scm_to_double(s_val));
-
-    return SCM_BOOL_T;
-}
-
-SCM
 thit_get_imputed_data(SCM s_model) {
     scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
@@ -144,14 +121,47 @@ thit_get_imputed_data(SCM s_model) {
     return s_rows;
 }
 
+// Load one of data into the model. The vararg should be a list of values with
+// length equal to the number of discrete columns plus the number of continuous
+// columns. The first values in the vararg are taken to be discrete, followed
+// by the continuous values.
+//
 SCM
 thit_load_row_x(SCM s_model, SCM s_varargs) {
     scm_assert_smob_type(thit_model_tag, s_model);
     banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
 
-    // TODO complete implementation
+    int n_col = model->n_disc + model->n_cont;
+    int n_args = scm_to_int(scm_length(s_varargs));
 
-    return SCM_BOOL_F;
+    if (model->n_rows == model->disc->size1)
+        scm_error_scm(thit_error, 
+                      scm_from_locale_string("load-row!"),
+                      scm_from_locale_string("The model is full, can't add more rows."),
+                      scm_list_2(scm_from_int(n_col), scm_from_int(n_args)),
+                      SCM_BOOL_F);
+
+    if (n_args != n_col)
+        scm_error_scm(thit_error, 
+                      scm_from_locale_string("load-row!"),
+                      scm_from_locale_string("Expected ~A values, got ~A."),
+                      scm_list_2(scm_from_int(n_col), scm_from_int(n_args)),
+                      SCM_BOOL_F);
+
+    int j;
+    for (j = 0; j < model->n_disc; j++) {
+        gsl_matrix_int_set(model->disc, model->n_rows, j,
+                           scm_to_int(scm_list_ref(s_varargs, scm_from_int(j))));
+    }
+
+    for (j = 0; j < model->n_cont; j++) {
+        gsl_matrix_set(model->cont, model->n_rows, j,
+                       scm_to_double(scm_list_ref(s_varargs, scm_from_int(j + model->n_disc))));
+    }
+
+    model->n_rows++;
+
+    return SCM_BOOL_T;
 }
 
 void
@@ -159,10 +169,9 @@ banmi_thit(void) {
     thit_model_tag = scm_make_smob_type("banmi_model", sizeof(banmi_model_t*));
     scm_set_smob_free(thit_model_tag, thit_free_model);
 
-    scm_c_define_gsubr("new-model", 6, 0, 0, thit_new_model);
-    scm_c_define_gsubr("load-discrete-value!", 4, 0, 0, thit_load_discrete_value_x);
-    scm_c_define_gsubr("load-continuous-value!", 4, 0, 0, thit_load_continuous_value_x);
+    thit_error = scm_from_locale_symbol("thit-error");
 
+    scm_c_define_gsubr("new-model", 6, 0, 0, thit_new_model);
     scm_c_define_gsubr("get-lambda", 1, 0, 0, thit_get_lambda);
     scm_c_define_gsubr("get-sigma", 1, 0, 0, thit_get_sigma);
     scm_c_define_gsubr("get-imputed-data", 1, 0, 0, thit_get_imputed_data);
