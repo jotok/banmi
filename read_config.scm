@@ -2,9 +2,12 @@
              (srfi srfi-11))
 (use-syntax (ice-9 syncase))
 
+(load-extension "./libthit" "banmi_thit")
+
 (read-set! keywords 'postfix)
 
 ;; Make an alist from a vararg.
+;;
 (define (pairs . args)
   (let loop ((acc '()) (args args))
     (if (< (length args) 2)
@@ -15,26 +18,58 @@
         (loop (cons (cons k v) acc)
               (list-tail args 2))))))
 
+;; Takes a list of vector indices and returns a list of the corresponding
+;; values at those indices.
+;;
 (define (vector-multi-ref vec indices)
   (let loop ((acc '()) (is indices))
     (if (null? is)
       (reverse acc)
       (loop (cons (vector-ref vec (car is)) acc) (cdr is)))))
 
+;; Merge default options into an alist
+;;
+(define (merge-defaults alist defaults)
+  (if (null? defaults)
+    alist
+    (merge-defaults (if (assq-ref alist (caar defaults))
+                      alist
+                      (cons (car defaults) alist))
+                    (cdr defaults))))
+
+;; Transform a column description to an alist
+;;
+(define-syntax column-description-transform
+  (syntax-rules()
+    ((_ (name type . options))
+     (merge-defaults (pairs name: 'name type: 'type . options)
+                     '((min: . 0))))))
+
 ;; Transform the data section of the configuration file to an alist.
+;;
 (define-syntax data
   (syntax-rules ()
-    ((_ columns: (name type . options) ...)
-     (list (cons columns: (vector (pairs name: 'name type: 'type . options) ...))))
+    ((_ columns: desc ...)
+     (list (cons columns: (vector (column-description-transform desc) ...))))
     ((_ k v . rest)
      (cons (cons k v) (data . rest)))))
 
+;; Return a list of column indices corresponding to columns of the given type.
+;;
 (define (column-indices type column-config)
   (filter (lambda (i) (eq? (assq-ref (vector-ref column-config i) type:) 
                            type))
           (iota (vector-length column-config))))
 
+;; Given a column description, return a function that transforms an input datum
+;; to the form expected by the model.
+;;
+(define (column-transform column)
+  ;; TODO
+  #f)
+
 ;; Open the file and apply fn to each value returned by read-fn.
+;;
 (define (do-with-file file read-fn fn)
   (with-input-from-file file
     (lambda ()
@@ -42,7 +77,15 @@
           ((eof-object? datum))
           (fn datum)))))
 
-;; Load the confiuration and determine the banmi configuration
+;; Convert a space-delimited string to a list of numbers
+;;
+(define (line->vector line)
+  (list->vector (map string->number
+                     (delete "" (string-split line #\space)))))
+
+;;
+;; Main program
+;;
 
 (define model-config #f)
 (define data-config #f)
@@ -54,3 +97,20 @@
       ((data) (set! data-config (primitive-eval form)))
       (else 
        (format #t "Warning: unknown section in configuration file: ~a~%" (car form))))))
+
+(define column-config (assq-ref data-config columns:))
+(define discrete-columns (column-indices 'discrete column-config))
+(define ordered-columns (column-indices 'ordered column-config))
+(define continuous-columns (column-indices 'continuous column-config))
+
+(define n-continuous (+ (length ordered-columns) (length continuous-columns)))
+(define bds-discrete (map (lambda (col) (1+ (- (assq-ref col max:)
+                                               (assq-ref col min:))))
+                          (vector-multi-ref column-config discrete-columns)))
+
+(define banmi-model (new-model (assq-ref model-config max-rows:)
+                               bds-discrete
+                               n-continuous
+                               (assq-ref model-config dp-weight:)
+                               (assq-ref model-config lambda-a:)
+                               (assq-ref model-config lambda-b:)))
