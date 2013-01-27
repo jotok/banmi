@@ -64,9 +64,48 @@
 ;; Given a column description, return a function that transforms an input datum
 ;; to the form expected by the model.
 ;;
-(define (column-transform column)
-  ;; TODO
-  #f)
+(define (column-transform x column)
+  (let* ((min (assq-ref column min:))
+         (size (- (assq-ref column max:) min)))
+    (case (assq-ref column type:)
+      ((discrete)
+       (- x min))
+      ((ordered)
+       (/ (+ (- x min) 0.5) (1+ size)))
+      ((continuous)
+       (/ (- x min) size)))))
+
+;; Same as column-transform, but negative values pass through as -1.
+;;
+(define (column-transform-1 x column)
+  (if (< x 0)
+    -1
+    (column-transform x column)))
+
+;; Given a column description, return a function that transforms a data
+;; column back to its original value range
+;;
+(define (column-inverse-transform x column)
+  (let* ((min (assq-ref column min:))
+         (size (- (assq-ref column max:) min)))
+    (case (assq-ref column type:)
+      ((discrete)
+       (+ x min))
+      ((ordered)
+       (+ (inexact->exact (floor (* x (1+ size)))) min))
+      ((continuous)
+       (+ (* x size) min)))))
+
+;; Transform a vector of input values to a list of values that can be loaded
+;; into the model
+;;
+(define (input-transform input column-config)
+  (define (input-transform-type type)
+    (map (lambda (i) (column-transform-1 (vector-ref input i) 
+                                         (vector-ref column-config i)))
+         (column-indices type column-config)))
+  (apply append 
+         (map input-transform-type '(discrete ordered continuous))))
 
 ;; Open the file and apply fn to each value returned by read-fn.
 ;;
@@ -80,8 +119,8 @@
 ;; Convert a space-delimited string to a list of numbers
 ;;
 (define (line->vector line)
-  (list->vector (map string->number
-                     (delete "" (string-split line #\space)))))
+  (list->vector 
+   (map string->number (delete "" (string-split line #\space)))))
 
 ;;
 ;; Main program
