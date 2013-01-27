@@ -9,11 +9,11 @@
 (data 
   file: "data/flas1.txt"
   header: #t
-  columns: (lan2 discrete)
-           (lan3 discrete)
-           (lan4 discrete)
-           (age discrete min: 1)
-           (pri discrete min: 1)
+  columns: (lan2 discrete max: 1)
+           (lan3 discrete max: 1)
+           (lan4 discrete max: 1)
+           (age discrete min: 1 max: 2)
+           (pri discrete min: 1 max: 3)
            (sex ignore)
            (mlat ignore)
            (flas ignore)

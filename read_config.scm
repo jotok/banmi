@@ -15,13 +15,24 @@
         (loop (cons (cons k v) acc)
               (list-tail args 2))))))
 
+(define (vector-multi-ref vec indices)
+  (let loop ((acc '()) (is indices))
+    (if (null? is)
+      (reverse acc)
+      (loop (cons (vector-ref vec (car is)) acc) (cdr is)))))
+
 ;; Transform the data section of the configuration file to an alist.
 (define-syntax data
   (syntax-rules ()
     ((_ columns: (name type . options) ...)
-     (list (pairs name: 'name type: 'type . options) ...))
+     (list (cons columns: (vector (pairs name: 'name type: 'type . options) ...))))
     ((_ k v . rest)
      (cons (cons k v) (data . rest)))))
+
+(define (column-indices type column-config)
+  (filter (lambda (i) (eq? (assq-ref (vector-ref column-config i) type:) 
+                           type))
+          (iota (vector-length column-config))))
 
 ;; Open the file and apply fn to each value returned by read-fn.
 (define (do-with-file file read-fn fn)
@@ -30,6 +41,8 @@
       (do ((datum (read-fn) (read-fn)))
           ((eof-object? datum))
           (fn datum)))))
+
+;; Load the confiuration and determine the banmi configuration
 
 (define model-config #f)
 (define data-config #f)
