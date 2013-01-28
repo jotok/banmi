@@ -144,7 +144,8 @@
          (colnames (map (lambda (i) 
                           (assq-ref (vector-ref column-config i) name:)) 
                         is)))
-    (apply format #t (string-join (make-list (length is) "~a") " ") colnames)
+    (apply format #t (string-join (make-list (1+ (length is)) "~a") " ") 
+           (cons "imputation" colnames))
     (newline)))
 
 ;; Returns a format string that can be used to display a row of output data
@@ -152,11 +153,21 @@
 (define (output-format column-config)
   (define (n-type type)
     (length (column-indices type column-config)))
-  (string-join (append (make-list (n-type 'discrete) "~d")
+  (string-join (append (list "~d")
+                       (make-list (n-type 'discrete) "~d")
                        (make-list (n-type 'ordered) "~d")
                        (make-list (n-type 'continuous) "~,2f")
                        (list "~%"))
                " "))
+
+;; Display an imputed data set; i is the imputation number.
+;;
+(define (display-imputed-data imputed-data i column-config)
+  (let ((format-string (output-format column-config)))
+    (for-each (lambda (j)
+                (apply format #t format-string i
+                       (output-transform (vector-ref imputed-data j) column-config)))
+              (iota (vector-length imputed-data)))))
 
 ;; Apply fn to each line read from file.
 ;;
@@ -198,7 +209,7 @@
 
 (define banmi-model (new-model model-config data-config))
 
-;; load data and perform the augmentation
+;; load data from file
 
 (define data-file (open-input-file (assq-ref data-config file:)))
 
@@ -213,27 +224,13 @@
 
 (close-input-port data-file)
 
-(banmi-data-augmentation! banmi-model (assq-ref model-config n-iter:))
+;; perform multiple imputation and print the result
 
-;; display the imputed data
-
-(let* ((column-config (assq-ref data-config columns:))
-       (format-string (output-format column-config))
-       (imputed-data (banmi-get-imputed-data banmi-model)))
+(let ((column-config (assq-ref data-config columns:)))
   (display-header column-config)
   (for-each (lambda (i)
-              (apply format #t format-string
-                     (output-transform (vector-ref imputed-data i) column-config)))
-            (iota (vector-length imputed-data))))
-
-(display "lambda ")
-(for-each (lambda (x) (format #t "~,2f " x))
-          (vector->list (banmi-get-lambda banmi-model)))
-(newline)
-
-(display "sigma ")
-(for-each (lambda (x) (format #t "~,2f " x))
-          (vector->list (banmi-get-sigma banmi-model)))
-(newline)
-
-(format #t "unique modes: ~d~%" (banmi-count-unique-modes banmi-model))
+              (banmi-data-augmentation! banmi-model (assq-ref model-config n-iter:))
+              (display-imputed-data (banmi-get-imputed-data banmi-model) 
+                                    (1+ i) 
+                                    column-config))
+            (iota (assq-ref model-config n-imputations:))))

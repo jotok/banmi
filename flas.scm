@@ -1,6 +1,7 @@
 (model
   max-rows: 300
-  n-iter: 50
+  n-iter: 250
+  n-imputations: 10
   
   dp-weight: 50
   lambda-a: 2

@@ -7,8 +7,8 @@
 #define MaxRows 300
 #define NDiscrete 7
 #define NContinuous 7
-#define NIter 50
-#define NImpute 5
+#define NIter 250
+#define NImpute 10
 
 #define DPWeight 50        // weight paramter to the DP
 #define LambdaA 2.0        // alpha parameter to lambda prior
@@ -76,7 +76,7 @@ read_data_from_file(banmi_model_t *model) {
 int
 main() {
     gsl_vector_int *bds_disc = gsl_vector_int_alloc(NDiscrete);
-    int i;
+    int i_impute, i;
     for (i = 0; i < NDiscrete; i++)
         gsl_vector_int_set(bds_disc, i, BdsDisc[i]);
 
@@ -86,32 +86,34 @@ main() {
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
     gsl_rng_set(rng, time(NULL));
-    banmi_data_augmentation(rng, model, NIter);
+    printf("imputation lan2 lan3 lan4 age pri sex grd mlat flas satv satm eng hgpa cgpa\n");
 
-    printf("lan2 lan3 lan4 age pri sex grd mlat flas satv satm eng hgpa cgpa\n");
+    for (i_impute = 0; i_impute < NImpute; i_impute++) {
 
-    // show the result
-    for (i = 0; i < model->n_rows; i++) {
+        banmi_data_augmentation(rng, model, NIter);
 
-        printf("%d %d %d %d %d %d %d %d %d %d %d %d %.2f %.2f\n", 
-               gsl_matrix_int_get(model->disc_imp, i, 0),
-               gsl_matrix_int_get(model->disc_imp, i, 1),
-               gsl_matrix_int_get(model->disc_imp, i, 2),
-               gsl_matrix_int_get(model->disc_imp, i, 3) + 1,
-               gsl_matrix_int_get(model->disc_imp, i, 4) + 1,
-               gsl_matrix_int_get(model->disc_imp, i, 5),
-               gsl_matrix_int_get(model->disc_imp, i, 6) + 1,
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 0), 110),
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 1), 40),
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 2), 800),
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 3), 800),
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 4), 120),
-               gsl_matrix_get(model->cont_imp, i, 5) * 4.0,
-               gsl_matrix_get(model->cont_imp, i, 6) * 4.0);
+
+        // show the result
+        for (i = 0; i < model->n_rows; i++) {
+
+            printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %.2f %.2f\n", 
+                   i_impute + 1,
+                   gsl_matrix_int_get(model->disc_imp, i, 0),
+                   gsl_matrix_int_get(model->disc_imp, i, 1),
+                   gsl_matrix_int_get(model->disc_imp, i, 2),
+                   gsl_matrix_int_get(model->disc_imp, i, 3) + 1,
+                   gsl_matrix_int_get(model->disc_imp, i, 4) + 1,
+                   gsl_matrix_int_get(model->disc_imp, i, 5),
+                   gsl_matrix_int_get(model->disc_imp, i, 6) + 1,
+                   banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 0), 110),
+                   banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 1), 40),
+                   banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 2), 800),
+                   banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 3), 800),
+                   banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 4), 120),
+                   gsl_matrix_get(model->cont_imp, i, 5) * 4.0,
+                   gsl_matrix_get(model->cont_imp, i, 6) * 4.0);
+        }
     }
-
-    banmi_print_shape_variables(model);
-    printf("unique modes: %d\n", banmi_count_unique_modes(model));
 
     return 0;
 }
