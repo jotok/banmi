@@ -221,3 +221,15 @@
               (apply format #t format-string
                      (output-transform (vector-ref imputed-data i) column-config)))
             (iota (vector-length imputed-data))))
+
+(display "lambda ")
+(for-each (lambda (x) (format #t "~,2f " x))
+          (vector->list (banmi-get-lambda banmi-model)))
+(newline)
+
+(display "sigma ")
+(for-each (lambda (x) (format #t "~,2f " x))
+          (vector->list (banmi-get-sigma banmi-model)))
+(newline)
+
+(format #t "unique modes: ~d~%" (banmi-count-unique-modes banmi-model))
