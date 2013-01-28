@@ -126,6 +126,38 @@
   (apply append 
          (map input-transform-type '(discrete ordered continuous))))
 
+;; Transform a vector representing a row in the banmi-model for display
+;;
+(define (output-transform output column-config)
+  (let ((is (apply append (map (lambda (type) (column-indices type column-config))
+                               '(discrete ordered continuous)))))
+    (map (lambda (i j) (column-inverse-transform (vector-ref output j)
+                                                 (vector-ref column-config i)))
+         is
+         (iota (length is)))))
+
+;; Display a header row
+;;
+(define (display-header column-config)
+  (let* ((is (apply append (map (lambda (type) (column-indices type column-config))
+                                '(discrete ordered continuous))))
+         (colnames (map (lambda (i) 
+                          (assq-ref (vector-ref column-config i) name:)) 
+                        is)))
+    (apply format #t (string-join (make-list (length is) "~a") " ") colnames)
+    (newline)))
+
+;; Returns a format string that can be used to display a row of output data
+;; 
+(define (output-format column-config)
+  (define (n-type type)
+    (length (column-indices type column-config)))
+  (string-join (append (make-list (n-type 'discrete) "~d")
+                       (make-list (n-type 'ordered) "~d")
+                       (make-list (n-type 'continuous) "~,2f")
+                       (list "~%"))
+               " "))
+
 ;; Apply fn to each line read from file.
 ;;
 (define (do-with-file file read-fn fn)
@@ -178,3 +210,14 @@
 (close-input-port data-file)
 
 (banmi-data-augmentation! banmi-model (assq-ref model-config n-iter:))
+
+;; display the imputed data
+
+(let* ((column-config (assq-ref data-config columns:))
+       (format-string (output-format column-config))
+       (imputed-data (banmi-get-imputed-data banmi-model)))
+  (display-header column-config)
+  (for-each (lambda (i)
+              (apply format #t format-string
+                     (output-transform (vector-ref imputed-data i) column-config)))
+            (iota (vector-length imputed-data))))
