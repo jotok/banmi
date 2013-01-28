@@ -5,15 +5,15 @@
 #include "banmi.h"
 
 #define MaxRows 300
-#define NDiscrete 5
-#define NContinuous 4
+#define NDiscrete 7
+#define NContinuous 7
 #define NIter 50
 
 #define DPWeight 50        // weight paramter to the DP
 #define LambdaA 2.0        // alpha parameter to lambda prior
 #define LambdaB 8.0        // beta parameter to lambda prior
 
-static double BdsDisc[5] = {2, 2, 2, 2, 3};
+static double BdsDisc[7] = {2, 2, 2, 2, 3, 2, 2};
 
 // Open flas1.txt and read it into the data fields in the model. flas1.txt is
 // a space-delimited file with 280 lines, including a header. Each line 
@@ -52,11 +52,16 @@ read_data_from_file(banmi_model_t *model) {
         gsl_matrix_int_set(model->disc, i, 2, lan4);
         gsl_matrix_int_set(model->disc, i, 3, (age >= 0)? age - 1 : -1);
         gsl_matrix_int_set(model->disc, i, 4, (pri >= 0)? pri - 1 : -1);
+        gsl_matrix_int_set(model->disc, i, 5, sex);
+        gsl_matrix_int_set(model->disc, i, 6, (grd >= 0)? grd - 1 : -1);
 
-        gsl_matrix_set(model->cont, i, 0, (satv >= 0) ? banmi_from_ordered_value(satv, 800) : -1);
-        gsl_matrix_set(model->cont, i, 1, (satm > 0) ? banmi_from_ordered_value(satm, 800) : -1);
-        gsl_matrix_set(model->cont, i, 2, (hgpa >= 0) ? (hgpa+0.0)/4.0 : -1);
-        gsl_matrix_set(model->cont, i, 3, (cgpa >= 0) ? (cgpa+0.0)/4.0 : -1);
+        gsl_matrix_set(model->cont, i, 0, (mlat >= 0) ? banmi_from_ordered_value(mlat, 110) : -1);
+        gsl_matrix_set(model->cont, i, 1, (flas >= 0) ? banmi_from_ordered_value(flas, 40) : -1);
+        gsl_matrix_set(model->cont, i, 2, (satv >= 0) ? banmi_from_ordered_value(satv, 800) : -1);
+        gsl_matrix_set(model->cont, i, 3, (satm > 0) ? banmi_from_ordered_value(satm, 800) : -1);
+        gsl_matrix_set(model->cont, i, 4, (eng > 0) ? banmi_from_ordered_value(eng, 120) : -1);
+        gsl_matrix_set(model->cont, i, 5, (hgpa >= 0) ? (hgpa+0.0)/4.0 : -1);
+        gsl_matrix_set(model->cont, i, 6, (cgpa >= 0) ? (cgpa+0.0)/4.0 : -1);
 
         i++;
     } 
@@ -82,19 +87,26 @@ main() {
     gsl_rng_set(rng, time(NULL));
     banmi_data_augmentation(rng, model, NIter);
 
+    printf("lan2 lan3 lan4 age pri sex grd mlat flas satv satm eng hgpa cgpa\n");
+
     // show the result
     for (i = 0; i < model->n_rows; i++) {
 
-        printf("%2d %2d %2d %2d %2d %4d %4d %4.2f %4.2f\n", 
+        printf("%d %d %d %d %d %d %d %d %d %d %d %d %.2f %.2f\n", 
                gsl_matrix_int_get(model->disc_imp, i, 0),
                gsl_matrix_int_get(model->disc_imp, i, 1),
                gsl_matrix_int_get(model->disc_imp, i, 2),
                gsl_matrix_int_get(model->disc_imp, i, 3) + 1,
                gsl_matrix_int_get(model->disc_imp, i, 4) + 1,
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 0), 800),
-               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 1), 800),
-               gsl_matrix_get(model->cont_imp, i, 2) * 4.0,
-               gsl_matrix_get(model->cont_imp, i, 3) * 4.0);
+               gsl_matrix_int_get(model->disc_imp, i, 5),
+               gsl_matrix_int_get(model->disc_imp, i, 6) + 1,
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 0), 110),
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 1), 40),
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 2), 800),
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 3), 800),
+               banmi_to_ordered_value(gsl_matrix_get(model->cont_imp, i, 4), 120),
+               gsl_matrix_get(model->cont_imp, i, 5) * 4.0,
+               gsl_matrix_get(model->cont_imp, i, 6) * 4.0);
     }
 
     banmi_print_shape_variables(model);
