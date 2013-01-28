@@ -17,15 +17,15 @@ typedef struct {
 
     int *dim;
     int *step;
-    int *dat;
+    double *dat;
 } tab_t;
 
 tab_t* alloc_tab(int, const int*);
 void free_tab(tab_t*);
 void tab_array_index(int*, const tab_t*, int);
 int tab_flat_index(int*, const tab_t*, const int*);
-int tab_get(const tab_t*, const int*);
-void tab_set(tab_t*, const int*, int);
+double tab_get(const tab_t*, const int*);
+void tab_set(tab_t*, const int*, double);
 tab_t* new_marginal_tab(const tab_t*, const int*, int);
 tab_t* new_conditional_tab(const tab_t*, const int*, const int*, int);
 

@@ -18,7 +18,7 @@ tab_t* alloc_tab(int n, const int *dim) {
         this_step *= dim[n - 1 - i];
     }
 
-    t->dat = malloc(t->size * sizeof(int));
+    t->dat = malloc(t->size * sizeof(double));
 
     return t;
 }
@@ -51,13 +51,13 @@ int tab_flat_index(int *flat_index, const tab_t *t, const int *arr_ix) {
     return *flat_index;
 }
 
-int tab_get(const tab_t *t, const int *arr_ix) {
+double tab_get(const tab_t *t, const int *arr_ix) {
     int flat_ix;
     tab_flat_index(&flat_ix, t, arr_ix);
     return t->dat[flat_ix];
 }
 
-void tab_set(tab_t *t, const int *arr_ix, int val) {
+void tab_set(tab_t *t, const int *arr_ix, double val) {
     int flat_ix;
     tab_flat_index(&flat_ix, t, arr_ix);
     t->dat[flat_ix] = val;
