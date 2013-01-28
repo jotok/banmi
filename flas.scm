@@ -4,6 +4,7 @@
   n-imputations: 10
   
   dp-weight: 50
+  init-crosstab: 0.1
   lambda-a: 2
   lambda-b: 8)
 

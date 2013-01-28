@@ -12,11 +12,12 @@ static gsl_rng *rng;
 
 static SCM
 thit_new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
-               SCM s_lambda_a, SCM s_lambda_b) 
+               SCM s_init_crosstab, SCM s_lambda_a, SCM s_lambda_b) 
 {
     int max_rows = scm_to_int(s_max_rows);
     int n_cont = scm_to_int(s_n_cont);
     double dp_weight = scm_to_double(s_dp_weight);
+    double init_crosstab = scm_to_double(s_init_crosstab);
     double lambda_a = scm_to_double(s_lambda_a);
     double lambda_b = scm_to_double(s_lambda_b);
 
@@ -30,7 +31,7 @@ thit_new_model(SCM s_max_rows, SCM s_bds_disc, SCM s_n_cont, SCM s_dp_weight,
     }
 
     banmi_model_t *model = new_banmi_model(max_rows, bds_disc, n_cont, dp_weight,
-                                           lambda_a, lambda_b);
+                                           init_crosstab, lambda_a, lambda_b);
 
     SCM smob;
     SCM_NEWSMOB(smob, thit_model_tag, model);
@@ -209,7 +210,7 @@ banmi_thit(void) {
 
     thit_error = scm_from_locale_symbol("thit-error");
 
-    scm_c_define_gsubr("new-banmi-model", 6, 0, 0, thit_new_model);
+    scm_c_define_gsubr("new-banmi-model", 7, 0, 0, thit_new_model);
     scm_c_define_gsubr("banmi-get-lambda", 1, 0, 0, thit_get_lambda);
     scm_c_define_gsubr("banmi-get-sigma", 1, 0, 0, thit_get_sigma);
     scm_c_define_gsubr("banmi-get-data", 1, 0, 0, thit_get_data);

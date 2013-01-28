@@ -112,6 +112,7 @@
                      bds-discrete
                      n-continuous
                      (assq-ref model-config dp-weight:)
+                     (assq-ref model-config init-crosstab:)
                      (assq-ref model-config lambda-a:)
                      (assq-ref model-config lambda-b:))))
 
