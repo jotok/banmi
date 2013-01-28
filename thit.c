@@ -209,12 +209,12 @@ banmi_thit(void) {
 
     thit_error = scm_from_locale_symbol("thit-error");
 
-    scm_c_define_gsubr("new-model", 6, 0, 0, thit_new_model);
-    scm_c_define_gsubr("get-lambda", 1, 0, 0, thit_get_lambda);
-    scm_c_define_gsubr("get-sigma", 1, 0, 0, thit_get_sigma);
-    scm_c_define_gsubr("get-data", 1, 0, 0, thit_get_data);
-    scm_c_define_gsubr("get-imputed-data", 1, 0, 0, thit_get_imputed_data);
-    scm_c_define_gsubr("load-row!", 1, 0, 1, thit_load_row_x);
-    scm_c_define_gsubr("data-augmentation!", 2, 0, 0, thit_data_augmentation_x);
-    scm_c_define_gsubr("count-unique-modes", 1, 0, 0, thit_count_unique_modes);
+    scm_c_define_gsubr("new-banmi-model", 6, 0, 0, thit_new_model);
+    scm_c_define_gsubr("banmi-get-lambda", 1, 0, 0, thit_get_lambda);
+    scm_c_define_gsubr("banmi-get-sigma", 1, 0, 0, thit_get_sigma);
+    scm_c_define_gsubr("banmi-get-data", 1, 0, 0, thit_get_data);
+    scm_c_define_gsubr("banmi-get-imputed-data", 1, 0, 0, thit_get_imputed_data);
+    scm_c_define_gsubr("banmi-load-row!", 1, 0, 1, thit_load_row_x);
+    scm_c_define_gsubr("banmi-data-augmentation!", 2, 0, 0, thit_data_augmentation_x);
+    scm_c_define_gsubr("banmi-count-unique-modes", 1, 0, 0, thit_count_unique_modes);
 }
