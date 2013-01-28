@@ -181,10 +181,14 @@
 
 ;; read the configuration and allocate the model
 
+(define argl (command-line))
+(if (< (length argl) 2)
+  (error "Usage: guile -s thit.scm CONFIGURATION_FILE"))
+
 (define model-config #f)
 (define data-config #f)
 
-(do-with-file "config.scm" read
+(do-with-file (cadr argl) read
   (lambda (form)
     (case (car form)
       ((model) (set! model-config (apply pairs (cdr form))))
