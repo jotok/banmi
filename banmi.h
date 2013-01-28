@@ -37,6 +37,9 @@ typedef struct {
     int mask_missing_cont_data, mask_missing_disc_data;
     gsl_vector_int *bds_disc;
 
+    // misc properties
+    int is_initialized;
+
 } banmi_model_t;
 
 banmi_model_t* 

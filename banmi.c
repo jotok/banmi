@@ -61,8 +61,9 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont,
         model->mask_missing_cont_data |= mask;
         mask = mask << 1;
     }
-
     model->mis_pat = malloc(sizeof(int) * max_rows);
+
+    model->is_initialized = 0;
 
     return model;
 }
@@ -490,12 +491,15 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
 void 
 banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter) {
 
-    // initialize the model
-    init_imputed_data(model);
-    sort_data_by_missingness_pattern(model);
-    init_hyperparameters(model);
-    init_missing_values(rng, model);
-    init_latent_variables(rng, model);
+    if (!model->is_initialized) {
+        // initialize the model before first augmentation
+        init_imputed_data(model);
+        sort_data_by_missingness_pattern(model);
+        init_hyperparameters(model);
+        init_missing_values(rng, model);
+        init_latent_variables(rng, model);
+        model->is_initialized = 1;
+    }
 
     // perform the data augmentation
 

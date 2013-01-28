@@ -8,6 +8,7 @@
 #define NDiscrete 7
 #define NContinuous 7
 #define NIter 50
+#define NImpute 5
 
 #define DPWeight 50        // weight paramter to the DP
 #define LambdaA 2.0        // alpha parameter to lambda prior
