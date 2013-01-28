@@ -1,4 +1,5 @@
 (use-modules (ice-9 format)
+             (ice-9 rdelim)
              (srfi srfi-11))
 (use-syntax (ice-9 syncase))
 
@@ -96,6 +97,24 @@
       ((continuous)
        (+ (* x size) min)))))
 
+;; Allocate a new banmi model with the given configuration
+;;
+(define (new-model model-config data-config)
+  (let* ((column-config (assq-ref data-config columns:))
+         (discrete-columns (column-indices 'discrete column-config))
+         (ordered-columns (column-indices 'ordered column-config))
+         (continuous-columns (column-indices 'continuous column-config))
+         (n-continuous (+ (length ordered-columns) (length continuous-columns)))
+         (bds-discrete (map (lambda (col) (1+ (- (assq-ref col max:)
+                                                 (assq-ref col min:))))
+                            (vector-multi-ref column-config discrete-columns))))
+    (new-banmi-model (assq-ref model-config max-rows:)
+                     bds-discrete
+                     n-continuous
+                     (assq-ref model-config dp-weight:)
+                     (assq-ref model-config lambda-a:)
+                     (assq-ref model-config lambda-b:))))
+
 ;; Transform a vector of input values to a list of values that can be loaded
 ;; into the model
 ;;
@@ -107,14 +126,16 @@
   (apply append 
          (map input-transform-type '(discrete ordered continuous))))
 
-;; Open the file and apply fn to each value returned by read-fn.
+;; Apply fn to each line read from file.
 ;;
 (define (do-with-file file read-fn fn)
-  (with-input-from-file file
-    (lambda ()
-      (do ((datum (read-fn) (read-fn)))
-          ((eof-object? datum))
-          (fn datum)))))
+  (define (proc port)
+    (do ((datum (read-fn port) (read-fn port)))
+        ((eof-object? datum))
+        (fn datum)))
+  (if (input-port? file)
+    (proc file)
+    (call-with-input-file file proc)))
 
 ;; Convert a space-delimited string to a list of numbers
 ;;
@@ -137,19 +158,4 @@
       (else 
        (format #t "Warning: unknown section in configuration file: ~a~%" (car form))))))
 
-(define column-config (assq-ref data-config columns:))
-(define discrete-columns (column-indices 'discrete column-config))
-(define ordered-columns (column-indices 'ordered column-config))
-(define continuous-columns (column-indices 'continuous column-config))
-
-(define n-continuous (+ (length ordered-columns) (length continuous-columns)))
-(define bds-discrete (map (lambda (col) (1+ (- (assq-ref col max:)
-                                               (assq-ref col min:))))
-                          (vector-multi-ref column-config discrete-columns)))
-
-(define banmi-model (new-model (assq-ref model-config max-rows:)
-                               bds-discrete
-                               n-continuous
-                               (assq-ref model-config dp-weight:)
-                               (assq-ref model-config lambda-a:)
-                               (assq-ref model-config lambda-b:)))
+(define banmi-model (new-model model-config data-config))
