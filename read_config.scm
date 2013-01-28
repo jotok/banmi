@@ -147,6 +147,8 @@
 ;; Main program
 ;;
 
+;; read the configuration and allocate the model
+
 (define model-config #f)
 (define data-config #f)
 
@@ -159,3 +161,20 @@
        (format #t "Warning: unknown section in configuration file: ~a~%" (car form))))))
 
 (define banmi-model (new-model model-config data-config))
+
+;; load data and perform the augmentation
+
+(define data-file (open-input-file (assq-ref data-config file:)))
+
+(if (assq-ref data-config header:)
+  (read-line data-file))           ;; throw away the header
+
+(do-with-file data-file read-line
+  (lambda (line)
+    (let* ((input (line->vector line))
+           (model-input (input-transform input (assq-ref data-config columns:))))
+      (apply banmi-load-row! banmi-model model-input))))
+
+(close-input-port data-file)
+
+(banmi-data-augmentation! banmi-model (assq-ref model-config n-iter:))
