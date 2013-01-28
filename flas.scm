@@ -33,8 +33,8 @@
 
 ;; run the multiple imputation
 
-(define model (new-model *max-rows* *bds-discrete* *n-continuous*
-                         *dp-weight* *lambda-a* *lambda-b*))
+(define model (new-banmi-model *max-rows* *bds-discrete* *n-continuous*
+                               *dp-weight* *lambda-a* *lambda-b*))
 
 ;; This function will be called to load rows from flas1.txt, a space-delimited
 ;; file with 14 columns of data. See flas_description.txt for more information.
@@ -44,17 +44,17 @@
     (lambda (line)
       (let-values (((lan2 lan3 lan4 age pri sex mlat flas satv satm eng hgpa cgpa grd)
                     (apply values (line->numbers line))))
-        (load-row! model 
-                   lan2 lan3 lan4 
-                   (if (>= age 0) (1- age) -1) 
-                   (if (>= pri 0) (1- pri) -1) 
-                   (if (>= satv 0) (ordered->continuous satv 800) -1)
-                   (if (>= satm 0) (ordered->continuous satm 800) -1)
-                   (if (>= hgpa 0) (/ hgpa 4.0) -1) 
-                   (if (>= cgpa 0) (/ cgpa 4.0) -1))))))
+        (banmi-load-row! model 
+                         lan2 lan3 lan4 
+                         (if (>= age 0) (1- age) -1) 
+                         (if (>= pri 0) (1- pri) -1) 
+                         (if (>= satv 0) (ordered->continuous satv 800) -1)
+                         (if (>= satm 0) (ordered->continuous satm 800) -1)
+                         (if (>= hgpa 0) (/ hgpa 4.0) -1) 
+                         (if (>= cgpa 0) (/ cgpa 4.0) -1))))))
 
 (with-input-from-file "data/flas1.txt" load-data-from-file)
-(data-augmentation! model *n-iter*)
+(banmi-data-augmentation! model *n-iter*)
 
 ;; show the result
 (for-each (lambda (row)
@@ -68,16 +68,16 @@
                     (continuous->ordered (vector-ref row 6) 800)
                     (* (vector-ref row 7) 4)
                     (* (vector-ref row 8) 4)))
-          (vector->list (get-imputed-data model)))
+          (vector->list (banmi-get-imputed-data model)))
 
 (display "lambda ")
 (for-each (lambda (x) (format #t "~,2f " x))
-          (vector->list (get-lambda model)))
+          (vector->list (banmi-get-lambda model)))
 (newline)
 
 (display "sigma ")
 (for-each (lambda (x) (format #t "~,2f " x))
-          (vector->list (get-sigma model)))
+          (vector->list (banmi-get-sigma model)))
 (newline)
 
-(format #t "unique modes: ~d~%" (count-unique-modes model))
+(format #t "unique modes: ~d~%" (banmi-count-unique-modes model))
