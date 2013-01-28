@@ -11,6 +11,7 @@
 #define NImpute 10
 
 #define DPWeight 50        // weight paramter to the DP
+#define InitCrosstab 0.1   // minimum weight in crosstab cell
 #define LambdaA 2.0        // alpha parameter to lambda prior
 #define LambdaB 8.0        // beta parameter to lambda prior
 
@@ -81,7 +82,7 @@ main() {
         gsl_vector_int_set(bds_disc, i, BdsDisc[i]);
 
     banmi_model_t *model = new_banmi_model(MaxRows, bds_disc, NContinuous,
-                                           DPWeight, LambdaA, LambdaB);
+                                           DPWeight, InitCrosstab, LambdaA, LambdaB);
     read_data_from_file(model);
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);

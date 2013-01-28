@@ -14,7 +14,8 @@ banmi_from_ordered_value(int o, int max_value) {
 //
 banmi_model_t*
 new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont, 
-                double dp_weight, double lambda_a, double lambda_b) 
+                double dp_weight, double init_crosstab, 
+                double lambda_a, double lambda_b) 
 {
 
     banmi_model_t *model = malloc(sizeof(banmi_model_t));
@@ -37,6 +38,7 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont,
     model->crosstab = alloc_tab(bds_disc->size, disc_dim);
 
     model->dp_weight = dp_weight;
+    model->init_crosstab = init_crosstab;
     model->mu_a = gsl_vector_alloc(n_cont);
     model->mu_b = gsl_vector_alloc(n_cont);
     model->sigma_a = gsl_vector_alloc(n_cont);
@@ -163,7 +165,7 @@ void init_hyperparameters(banmi_model_t *model) {
     // compute the crosstab of the complete rows
 
     for (i = 0; i < model->crosstab->size; i++)
-        model->crosstab->dat[i] = 1;
+        model->crosstab->dat[i] = model->init_crosstab;
 
     for (i = 0; i < model->n_complete; i++) {
 

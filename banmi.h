@@ -28,6 +28,7 @@ typedef struct {
 
     // hyperparameters
     double dp_weight;
+    double init_crosstab;
     tab_t *crosstab;
     gsl_vector *mu_a, *mu_b, *sigma_a, *sigma_b;
     double lambda_a, lambda_b;
@@ -43,7 +44,7 @@ typedef struct {
 } banmi_model_t;
 
 banmi_model_t* 
-new_banmi_model(int, gsl_vector_int*, int, double, double, double);
+new_banmi_model(int, gsl_vector_int*, int, double, double, double, double);
 
 void 
 banmi_data_augmentation(gsl_rng*, banmi_model_t*, int);
