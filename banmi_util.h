@@ -34,7 +34,6 @@ void order_d(double*, const int*, int);
 void order_blocks(int*, const int*, int, int);
 void order_blocks_d(double*, const int*, int, int);
 
-int sample(gsl_rng*, int, const int*);
 int sample_d(gsl_rng*, int, const double*);
 
 #endif

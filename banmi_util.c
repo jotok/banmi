@@ -337,25 +337,6 @@ void order_blocks_d(double *values, const int *by, int n_blocks, int block_size)
     free(by_copy);
 }
 
-int sample(gsl_rng *rng, int n, const int *weight) {
-    double cumprob = 0.0;
-    int i, total = 0;
-
-    for (i = 0; i < n; i++)
-        total += weight[i];
-
-    double u = gsl_rng_uniform(rng);
-
-    for (i = 0; i < n; i++) {
-        cumprob += (weight[i] + 0.0) / total;
-        if (cumprob > u)
-            break;
-    }
-
-    return i;
-}
-
-// is there a better solution than copy/paste?
 int sample_d(gsl_rng *rng, int n, const double *weight) {
     double cumprob = 0.0, total = 0.0;
     int i;
