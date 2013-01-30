@@ -6,6 +6,10 @@ CC=c99
 
 $(P): $(OBJECTS)
 
+banmi.o: banmi_util.o
+
+mico.o: banmi_util.o
+
 thit:
 	$(CC) `pkg-config --cflags guile-1.8` -shared -o libthit.so \
 		$(OBJECTS) -fPIC thit.c $(LDLIBS)
