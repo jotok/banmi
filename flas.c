@@ -68,7 +68,7 @@ read_data_from_file(banmi_model_t *model) {
         gsl_vector_set(cont, 5, (hgpa >= 0) ? (hgpa+0.0)/4.0 : -1);
         gsl_vector_set(cont, 6, (cgpa >= 0) ? (cgpa+0.0)/4.0 : -1);
 
-        banmi_add_row(model, disc, cont);
+        banmi_load_row(model, disc, cont);
 
         i++;
     } 

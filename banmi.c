@@ -73,7 +73,7 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont,
 // Add a row of data to the model.
 //
 void
-banmi_add_row(banmi_model_t *model, gsl_vector_int *disc, gsl_vector *cont) {
+banmi_load_row(banmi_model_t *model, gsl_vector_int *disc, gsl_vector *cont) {
     gsl_matrix_int_set_row(model->disc, model->n_rows, disc);
     gsl_matrix_int_set_row(model->disc_imp, model->n_rows, disc);
     gsl_matrix_set_row(model->cont, model->n_rows, cont);
