@@ -46,6 +46,9 @@ typedef struct {
 banmi_model_t* 
 new_banmi_model(int, gsl_vector_int*, int, double, double, double, double);
 
+void
+banmi_add_row(banmi_model_t*, gsl_vector_int*, gsl_vector*);
+
 void 
 banmi_data_augmentation(gsl_rng*, banmi_model_t*, int);
 

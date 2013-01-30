@@ -70,20 +70,15 @@ new_banmi_model(int max_rows, gsl_vector_int *bds_disc, int n_cont,
     return model;
 }
 
-// Copy values from from foo to foo_imp
+// Add a row of data to the model.
 //
 void
-init_imputed_data(banmi_model_t *model) {
-    int i, j;
-    
-    for (i = 0; i < model->n_rows; i++) {
-        for (j = 0; j < model->cont->size2; j++)
-            gsl_matrix_set(model->cont_imp, i, j, gsl_matrix_get(model->cont, i, j));
-
-        for (j = 0; j < model->disc->size2; j++)
-            gsl_matrix_int_set(model->disc_imp, i, j, 
-                               gsl_matrix_int_get(model->disc, i, j));
-    }
+banmi_add_row(banmi_model_t *model, gsl_vector_int *disc, gsl_vector *cont) {
+    gsl_matrix_int_set_row(model->disc, model->n_rows, disc);
+    gsl_matrix_int_set_row(model->disc_imp, model->n_rows, disc);
+    gsl_matrix_set_row(model->cont, model->n_rows, cont);
+    gsl_matrix_set_row(model->cont_imp, model->n_rows, cont);
+    model->n_rows++;
 }
 
 // Compute the missingness pattern for the given row of data.
@@ -495,7 +490,6 @@ banmi_data_augmentation(gsl_rng *rng, banmi_model_t *model, int n_iter) {
 
     if (!model->is_initialized) {
         // initialize the model before first augmentation
-        init_imputed_data(model);
         sort_data_by_missingness_pattern(model);
         init_hyperparameters(model);
         init_missing_values(rng, model);

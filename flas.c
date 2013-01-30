@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <time.h>
-#include <gsl/gsl_rng.h>
 
 #include "banmi.h"
 
@@ -42,6 +41,10 @@ read_data_from_file(banmi_model_t *model) {
     int i = 0, lan2, lan3, lan4, age, pri, sex, mlat, flas, satv, 
         satm, eng, grd;
     double hgpa, cgpa;
+
+    gsl_vector_int *disc = gsl_vector_int_alloc(model->n_disc);
+    gsl_vector *cont = gsl_vector_alloc(model->n_cont);
+
     while (i < MaxRows) {
         fscanf(f, "%d %d %d %d %d %d %d %d %d %d %d %lf %lf %d",
                &lan2, &lan3, &lan4, &age, &pri, &sex, &mlat, &flas, &satv, 
@@ -49,28 +52,31 @@ read_data_from_file(banmi_model_t *model) {
 
         if (feof(f)) break;
 
-        gsl_matrix_int_set(model->disc, i, 0, lan2);
-        gsl_matrix_int_set(model->disc, i, 1, lan3);
-        gsl_matrix_int_set(model->disc, i, 2, lan4);
-        gsl_matrix_int_set(model->disc, i, 3, (age >= 0)? age - 1 : -1);
-        gsl_matrix_int_set(model->disc, i, 4, (pri >= 0)? pri - 1 : -1);
-        gsl_matrix_int_set(model->disc, i, 5, sex);
-        gsl_matrix_int_set(model->disc, i, 6, (grd >= 0)? grd - 1 : -1);
+        gsl_vector_int_set(disc, 0, lan2);
+        gsl_vector_int_set(disc, 1, lan3);
+        gsl_vector_int_set(disc, 2, lan4);
+        gsl_vector_int_set(disc, 3, (age >= 0)? age - 1 : -1);
+        gsl_vector_int_set(disc, 4, (pri >= 0)? pri - 1 : -1);
+        gsl_vector_int_set(disc, 5, sex);
+        gsl_vector_int_set(disc, 6, (grd >= 0)? grd - 1 : -1);
 
-        gsl_matrix_set(model->cont, i, 0, (mlat >= 0) ? banmi_from_ordered_value(mlat, 110) : -1);
-        gsl_matrix_set(model->cont, i, 1, (flas >= 0) ? banmi_from_ordered_value(flas, 40) : -1);
-        gsl_matrix_set(model->cont, i, 2, (satv >= 0) ? banmi_from_ordered_value(satv, 800) : -1);
-        gsl_matrix_set(model->cont, i, 3, (satm > 0) ? banmi_from_ordered_value(satm, 800) : -1);
-        gsl_matrix_set(model->cont, i, 4, (eng > 0) ? banmi_from_ordered_value(eng, 120) : -1);
-        gsl_matrix_set(model->cont, i, 5, (hgpa >= 0) ? (hgpa+0.0)/4.0 : -1);
-        gsl_matrix_set(model->cont, i, 6, (cgpa >= 0) ? (cgpa+0.0)/4.0 : -1);
+        gsl_vector_set(cont, 0, (mlat >= 0) ? banmi_from_ordered_value(mlat, 110) : -1);
+        gsl_vector_set(cont, 1, (flas >= 0) ? banmi_from_ordered_value(flas, 40) : -1);
+        gsl_vector_set(cont, 2, (satv >= 0) ? banmi_from_ordered_value(satv, 800) : -1);
+        gsl_vector_set(cont, 3, (satm > 0) ? banmi_from_ordered_value(satm, 800) : -1);
+        gsl_vector_set(cont, 4, (eng > 0) ? banmi_from_ordered_value(eng, 120) : -1);
+        gsl_vector_set(cont, 5, (hgpa >= 0) ? (hgpa+0.0)/4.0 : -1);
+        gsl_vector_set(cont, 6, (cgpa >= 0) ? (cgpa+0.0)/4.0 : -1);
+
+        banmi_add_row(model, disc, cont);
 
         i++;
     } 
 
+    gsl_vector_int_free(disc);
+    gsl_vector_free(cont);
     fclose(f);
 
-    model->n_rows = i;
     return i;
 }
 
