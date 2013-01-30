@@ -1,6 +1,7 @@
 #include "banmi_util.h"
 
-tab_t* alloc_tab(int n, const int *dim) {
+tab_t* 
+alloc_tab(int n, const int *dim) {
     tab_t *t = malloc(sizeof(tab_t));
     t->n = n;
     t->size = 1;
@@ -23,14 +24,16 @@ tab_t* alloc_tab(int n, const int *dim) {
     return t;
 }
 
-void free_tab(tab_t *t) {
+void 
+free_tab(tab_t *t) {
     free(t->dat);
     free(t->step);
     free(t->dim);
     free(t);
 }
 
-void tab_array_index(int *arr_ix, const tab_t *t, int flat_ix) {
+void 
+tab_array_index(int *arr_ix, const tab_t *t, int flat_ix) {
     // assumes arr_ix is properly alloc'd
     int i, s;
     for (i = 0; i < t->n; i++) {
@@ -40,7 +43,8 @@ void tab_array_index(int *arr_ix, const tab_t *t, int flat_ix) {
     }
 }
 
-int tab_flat_index(int *flat_index, const tab_t *t, const int *arr_ix) {
+int 
+tab_flat_index(int *flat_index, const tab_t *t, const int *arr_ix) {
     *flat_index = 0;
 
     int i;
@@ -51,13 +55,15 @@ int tab_flat_index(int *flat_index, const tab_t *t, const int *arr_ix) {
     return *flat_index;
 }
 
-double tab_get(const tab_t *t, const int *arr_ix) {
+double 
+tab_get(const tab_t *t, const int *arr_ix) {
     int flat_ix;
     tab_flat_index(&flat_ix, t, arr_ix);
     return t->dat[flat_ix];
 }
 
-void tab_set(tab_t *t, const int *arr_ix, double val) {
+void 
+tab_set(tab_t *t, const int *arr_ix, double val) {
     int flat_ix;
     tab_flat_index(&flat_ix, t, arr_ix);
     t->dat[flat_ix] = val;
@@ -166,7 +172,8 @@ new_conditional_tab(const tab_t *t, const int *free_margins, const int *conditio
 
 #define Swap(a, b, temp) { temp = a; a = b; b = temp; }
 
-int _partition(int *values, int *by, int left, int right, int pivot) {
+static int 
+_partition(int *values, int *by, int left, int right, int pivot) {
     int itemp, pivot_value = by[pivot];
     double dtemp;
 
@@ -187,7 +194,8 @@ int _partition(int *values, int *by, int left, int right, int pivot) {
     return store_index;
 }
 
-void _order(int *values, int *by, int left, int right) {
+static void 
+_order(int *values, int *by, int left, int right) {
     if (left < right) {
         int pivot = (right + left) / 2;
         pivot = _partition(values, by, left, right, pivot);
@@ -196,7 +204,8 @@ void _order(int *values, int *by, int left, int right) {
     }
 }
 
-void order(int *values, const int *by, int n) {
+void 
+order(int *values, const int *by, int n) {
     int i, *by_copy = malloc(n * sizeof(int));
 
     for (i = 0; i < n; i++) 
@@ -207,7 +216,8 @@ void order(int *values, const int *by, int n) {
     free(by_copy);
 }
 
-int _partition_d(double *values, int *by, int left, int right, int pivot) {
+static int 
+_partition_d(double *values, int *by, int left, int right, int pivot) {
     int itemp, pivot_value = by[pivot];
     double dtemp;
 
@@ -228,7 +238,8 @@ int _partition_d(double *values, int *by, int left, int right, int pivot) {
     return store_index;
 }
 
-void _order_d(double *values, int *by, int left, int right) {
+static void 
+_order_d(double *values, int *by, int left, int right) {
     if (left < right) {
         int pivot = (right + left) / 2;
         pivot = _partition_d(values, by, left, right, pivot);
@@ -237,7 +248,8 @@ void _order_d(double *values, int *by, int left, int right) {
     }
 }
 
-void order_d(double *values, const int *by, int n) {
+void 
+order_d(double *values, const int *by, int n) {
     int i, *by_copy = malloc(n * sizeof(int));
 
     for (i = 0; i < n; i++) 
@@ -248,7 +260,8 @@ void order_d(double *values, const int *by, int n) {
     free(by_copy);
 }
 
-int _partition_blocks(int *values, int *by, int left, int right, int pivot, int block_size) {
+static int 
+_partition_blocks(int *values, int *by, int left, int right, int pivot, int block_size) {
     int i, temp, pivot_value = by[pivot];
     
     Swap(by[pivot], by[right], temp)
@@ -272,7 +285,8 @@ int _partition_blocks(int *values, int *by, int left, int right, int pivot, int 
     return store_index;
 }
 
-void _order_blocks(int *values, int *by, int left, int right, int block_size) {
+static void 
+_order_blocks(int *values, int *by, int left, int right, int block_size) {
     if (left < right) {
         int pivot = (right + left) / 2;
         pivot = _partition_blocks(values, by, left, right, pivot, block_size);
@@ -281,7 +295,8 @@ void _order_blocks(int *values, int *by, int left, int right, int block_size) {
     }
 }
 
-void order_blocks(int *values, const int *by, int n_blocks, int block_size) {
+void 
+order_blocks(int *values, const int *by, int n_blocks, int block_size) {
     int i, *by_copy = malloc(n_blocks * sizeof(int));
 
     for (i = 0; i < n_blocks; i++) 
@@ -292,7 +307,8 @@ void order_blocks(int *values, const int *by, int n_blocks, int block_size) {
     free(by_copy);
 }
 
-int _partition_blocks_d(double *values, int *by, int left, int right, int pivot, int block_size) {
+static int 
+_partition_blocks_d(double *values, int *by, int left, int right, int pivot, int block_size) {
     int i, pivot_value = by[pivot];
     double temp;
     
@@ -317,7 +333,8 @@ int _partition_blocks_d(double *values, int *by, int left, int right, int pivot,
     return store_index;
 }
 
-void _order_blocks_d(double *values, int *by, int left, int right, int block_size) {
+static void 
+_order_blocks_d(double *values, int *by, int left, int right, int block_size) {
     if (left < right) {
         int pivot = (right + left) / 2;
         pivot = _partition_blocks_d(values, by, left, right, pivot, block_size);
@@ -326,7 +343,8 @@ void _order_blocks_d(double *values, int *by, int left, int right, int block_siz
     }
 }
 
-void order_blocks_d(double *values, const int *by, int n_blocks, int block_size) {
+void 
+order_blocks_d(double *values, const int *by, int n_blocks, int block_size) {
     int i, *by_copy = malloc(n_blocks * sizeof(int));
 
     for (i = 0; i < n_blocks; i++) 
