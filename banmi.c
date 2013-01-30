@@ -83,7 +83,7 @@ banmi_load_row(banmi_model_t *model, gsl_vector_int *disc, gsl_vector *cont) {
 
 // Compute the missingness pattern for the given row of data.
 //
-int 
+static int 
 missingness_pattern(const banmi_model_t *model, int row) {
     int i, pattern = 0, mask = 1;
 
@@ -108,7 +108,7 @@ missingness_pattern(const banmi_model_t *model, int row) {
 // return the number of margins with missing data.
 // Example:
 //   [0 -1  0 -1  1]  => [1  3]
-int 
+static int 
 missingness_pattern_to_index(int *ix, int n_disc, int pattern) {
     int i, j = 0, mask = 1;
     for (i = 0; i < n_disc; i++) {
@@ -124,7 +124,7 @@ missingness_pattern_to_index(int *ix, int n_disc, int pattern) {
 // Sort the rows of data by missingness pattern. Additionally, set the
 // n_complete and n_missing fields. Returns the number of complete rows.
 //
-int
+static int
 sort_data_by_missingness_pattern(banmi_model_t *model) {
     int i, n_complete = 0;
 
@@ -158,7 +158,8 @@ sort_data_by_missingness_pattern(banmi_model_t *model) {
 // This function should be called after sort_data_by_missingness_pattern, since
 // that function sets model->n_complete.
 //
-void init_hyperparameters(banmi_model_t *model) { 
+static void 
+init_hyperparameters(banmi_model_t *model) { 
     int i, j, crosstab_ix[model->n_disc];
 
     // compute the crosstab of the complete rows
@@ -208,7 +209,7 @@ void init_hyperparameters(banmi_model_t *model) {
 // Set initial values for missing values in the imputed data set. This function
 // should be called after init_hyperparams.
 //
-void
+static void
 init_missing_values(gsl_rng *rng, banmi_model_t *model) {
     int i, j, last_pattern, this_pattern, n_missing, flat_ix,
         missing_ix[model->n_disc], marg_ix[model->n_disc];
@@ -256,7 +257,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
 }
 
-double 
+static double 
 kernel(const gsl_vector_int *bds_disc,
        const gsl_vector *u, const gsl_vector_int *w, 
        const gsl_vector *mu, const gsl_vector_int *x, 
@@ -292,7 +293,7 @@ kernel(const gsl_vector_int *bds_disc,
 // Initialize the means/modes of the mixture model. This function should be 
 // called after init_hyperparams.
 //
-void
+static void
 init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     int i, j, flat_ix, crosstab_ix[model->n_disc];
 
@@ -323,7 +324,7 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     }
 }
 
-void
+static void
 draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
 
     int i, j, k, flat_ix, choice, crosstab_ix[model->n_disc];
@@ -439,7 +440,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     }
 }
 
-void
+static void
 draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
     int i, j, choice;
     double u, mu, sigma, cont_val;
