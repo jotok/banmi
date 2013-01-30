@@ -199,10 +199,11 @@ init_hyperparameters(banmi_model_t *model) {
                        (1 - mean) * (mean * (1 - mean) / var - 1));
 
         // set sigma_a and sigma_b to have a mean given by Silverman's rule
-        // and a weight equal to the number of complete observations
-        mean_shape = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
-        alpha = (insert_index+0.0) / 2.0;
-        beta = 1.0 / (mean_shape * (alpha - 2));
+        // and a weight equal to the number of complete observations.
+        // the 20.0 in the denominator is to downweight the prior
+        mean_shape = 1.22 * var * pow(insert_index, -0.4);
+        alpha = (insert_index+0.0) / 20.0;
+        beta = alpha * mean_shape;
         gsl_vector_set(model->sigma_a, j, alpha);
         gsl_vector_set(model->sigma_b, j, beta);
     }
@@ -316,7 +317,7 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
     double s;
     for (i = 0; i < model->n_cont; i++) {
         s = sqrt(1.0 / gsl_ran_gamma(rng, gsl_vector_get(model->sigma_a, i), 
-                                          gsl_vector_get(model->sigma_b, i)));
+                                          1.0 / gsl_vector_get(model->sigma_b, i)));
         gsl_vector_set(model->sigma, i, s);
     }
 
@@ -419,10 +420,9 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                    gsl_matrix_get(model->mu, i, j);
             sigma_b_post += pow(diff, 2.0) / 2.0;
         }
-        sigma_b_post = 1.0 / sigma_b_post;
 
         gsl_vector_set(model->sigma, j,
-                       sqrt(1.0 / gsl_ran_gamma(rng, sigma_a_post, sigma_b_post)));
+                       sqrt(1.0 / gsl_ran_gamma(rng, sigma_a_post, 1.0 / sigma_b_post)));
     }
 
     double lambda_a_post, lambda_b_post;
