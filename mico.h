@@ -5,6 +5,8 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 
+#include "banmi_util.h"
+
 typedef struct {
     // original data and imputed data
     gsl_matrix *y, *yi;

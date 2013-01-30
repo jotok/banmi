@@ -36,7 +36,7 @@ missingness_pattern(const mico_model_t *model, int row) {
     int j, pattern = 0, mask = 1;
 
     for (j = 0; j < model->n_cols; j++) {
-        if (isnan(gsl_matrix_int_get(model->y, row, j)))
+        if (isnan(gsl_matrix_get(model->y, row, j)))
             pattern |= mask;
 
         mask = mask << 1;
@@ -59,8 +59,8 @@ sort_data_by_missingness_pattern(mico_model_t *model) {
             n_complete++;
     }
 
-    order_blocks(model->y->data, model->mis_pat, model->n_rows, model->y->tda);
-    order_blocks(model->yi->data, model->mis_pat, model->n_rows, model->yi->tda);
+    order_blocks_d(model->y->data, model->mis_pat, model->n_rows, model->y->tda);
+    order_blocks_d(model->yi->data, model->mis_pat, model->n_rows, model->yi->tda);
     order(model->mis_pat, model->mis_pat, model->n_rows);
 
     model->n_complete = n_complete;

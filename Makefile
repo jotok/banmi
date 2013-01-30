@@ -1,5 +1,5 @@
 P = flas_example
-OBJECTS = banmi_util.o banmi.o
+OBJECTS = banmi_util.o banmi.o mico.o
 CFLAGS = -g -Wall -pg -fPIC
 LDLIBS = -lgsl -lgslcblas -lm
 CC=c99
