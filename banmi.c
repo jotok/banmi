@@ -177,11 +177,11 @@ init_hyperparameters(banmi_model_t *model) {
     }
 
     // take the distribution of means for the continuous variables to have a
-    // beta distribution.  Note the mean computation uses all known values, not
+    // beta distribution. Note the mean computation uses all known values, not
     // just the ones in complete data rows.
     //
 
-    double mean, mean_shape, var, u, temp[model->n_rows];
+    double mean, mean_shape, var, alpha, beta, u, temp[model->n_rows];
     int insert_index;
     for (j = 0; j < model->n_cont; j++) {
         insert_index = 0;
@@ -201,8 +201,10 @@ init_hyperparameters(banmi_model_t *model) {
         // set sigma_a and sigma_b to have a mean given by Silverman's rule
         // and a weight equal to the number of complete observations
         mean_shape = 1.06 * pow(var, 0.5) * pow(insert_index, -0.2);
-        gsl_vector_set(model->sigma_a, j, (insert_index+0.0) / 2.0);
-        gsl_vector_set(model->sigma_b, j, 2.0 * mean_shape / insert_index);
+        alpha = (insert_index+0.0) / 2.0;
+        beta = 1.0 / (mean_shape * (alpha - 2));
+        gsl_vector_set(model->sigma_a, j, alpha);
+        gsl_vector_set(model->sigma_b, j, beta);
     }
 }
 

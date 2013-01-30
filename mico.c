@@ -3,16 +3,22 @@
 // Allocate a new mico model
 //
 mico_model_t*
-new_mico_model(int max_rows, int n_cols, int n_comp) {
+new_mico_model(int max_rows, int n_cols, int n_comp, double sigma_a, double sigma_b) {
     mico_model_t *model = malloc(sizeof(mico_model_t));
 
     model->y = gsl_matrix_alloc(max_rows, n_cols);
     model->yi = gsl_matrix_alloc(max_rows, n_cols);
 
-    model->mu = gsl_matrix_alloc(n_comp, n_cols);
+    model->xi = gsl_matrix_alloc(n_comp, n_cols);
+
+    model->mu = gsl_vector_alloc(n_cols);
     model->theta = gsl_vector_alloc(n_cols);
 
     model->n_comp = n_comp;
+    model->sigma_a = sigma_a;
+    model->sigma_b = sigma_b;
+    model->mu_a = gsl_vector_alloc(n_cols);
+    model->mu_b = gsl_vector_alloc(n_cols);
     model->theta_a = gsl_vector_alloc(n_cols);
     model->theta_b = gsl_vector_alloc(n_cols);
 
@@ -67,4 +73,52 @@ sort_data_by_missingness_pattern(mico_model_t *model) {
     model->n_missing = model->n_rows - n_complete;
 
     return n_complete;
+}
+
+static void
+init_parameters(mico_model_t *model) {
+    // place a prior on the marginal variance so that the expected value is
+    // the variance of the observed values, and the weight is the number of
+    // complete values.
+    int i, j, insert_index = 0;
+    double this_y, mean, var, alpha, beta, temp[model->n_rows];
+
+    for (j = 0; j < model->n_cols; j++) {
+        insert_index = 0;
+        for (i = 0; i < model->n_rows; i++) {
+            if (!isnan(this_y = gsl_matrix_get(model->y, i, j)))
+                temp[insert_index++] = this_y;
+        }
+
+        mean = gsl_stats_mean(temp, 1, insert_index);
+        var = gsl_stats_variance(temp, 1, insert_index);
+
+        alpha = mean;
+        beta = insert_index+0.0;
+        gsl_vector_set(model->mu_a, j, alpha);
+        gsl_vector_set(model->mu_b, j, beta);
+
+        alpha = (insert_index+0.0) / 2.0;
+        beta = 1.0 / (var * (alpha - 2));
+        gsl_vector_set(model->theta_a, j, alpha);
+        gsl_vector_set(model->theta_b, j, beta);
+    }
+
+    // draw values
+}
+
+// Set initial values in the imputed data set.
+//
+static void
+init_missing_values(gsl_rng *rng, mico_model_t *model) {
+}
+
+void
+mico_data_augmentation(gsl_rng *rng, mico_model_t *model, int n_iter) {
+
+    if (!model->is_initialized) {
+        sort_data_by_missingness_pattern(model);
+        init_parameters(model);
+        init_missing_values(rng, model);
+    }
 }
