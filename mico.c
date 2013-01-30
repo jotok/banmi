@@ -59,9 +59,9 @@ sort_data_by_missingness_pattern(mico_model_t *model) {
             n_complete++;
     }
 
-    order_blocks_d(model->y->data, model->mis_pat, model->n_rows, model->y->tda);
-    order_blocks_d(model->yi->data, model->mis_pat, model->n_rows, model->yi->tda);
-    order(model->mis_pat, model->mis_pat, model->n_rows);
+    banmi_order_blocks(model->y->data, model->mis_pat, model->n_rows, model->y->tda);
+    banmi_order_blocks(model->yi->data, model->mis_pat, model->n_rows, model->yi->tda);
+    banmi_order_int(model->mis_pat, model->mis_pat, model->n_rows);
 
     model->n_complete = n_complete;
     model->n_missing = model->n_rows - n_complete;
