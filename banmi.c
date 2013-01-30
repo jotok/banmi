@@ -232,7 +232,7 @@ init_missing_values(gsl_rng *rng, banmi_model_t *model) {
             }
 
             // sample from the marginal distribution and copy result to disc_imp
-            flat_ix = sample_d(rng, margtab->size, margtab->dat);
+            flat_ix = banmi_sample(rng, margtab->size, margtab->dat);
             tab_array_index(marg_ix, margtab, flat_ix);
             for (j = 0; j < margtab->n; j++) {
                 gsl_matrix_int_set(model->disc_imp, i, missing_ix[j], marg_ix[j]);
@@ -299,7 +299,7 @@ init_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                              gsl_vector_get(model->mu_b, j)));
         }
 
-        flat_ix = sample_d(rng, model->crosstab->size, model->crosstab->dat);
+        flat_ix = banmi_sample(rng, model->crosstab->size, model->crosstab->dat);
         tab_array_index(crosstab_ix, model->crosstab, flat_ix);
         for (j = 0; j < model->n_disc; j++) {
             gsl_matrix_int_set(model->x, i, j, crosstab_ix[j]);
@@ -363,7 +363,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
             k++;
         }
 
-        choice = sample_d(rng, model->n_rows, weight);
+        choice = banmi_sample(rng, model->n_rows, weight);
 
         if (choice == 0) {
             // sample from G_0
@@ -372,7 +372,7 @@ draw_new_latent_variables(gsl_rng *rng, banmi_model_t *model) {
                                gsl_ran_beta(rng, gsl_vector_get(model->mu_a, j), 
                                                  gsl_vector_get(model->mu_b, j)));
 
-            flat_ix = sample_d(rng, model->crosstab->size, model->crosstab->dat);
+            flat_ix = banmi_sample(rng, model->crosstab->size, model->crosstab->dat);
             tab_array_index(crosstab_ix, model->crosstab, flat_ix);
             for (j = 0; j < model->n_disc; j++) {
                 gsl_matrix_int_set(model->x, i, j, crosstab_ix[j]);

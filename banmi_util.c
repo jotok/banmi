@@ -337,7 +337,10 @@ void order_blocks_d(double *values, const int *by, int n_blocks, int block_size)
     free(by_copy);
 }
 
-int sample_d(gsl_rng *rng, int n, const double *weight) {
+// Sample an int between 0 and n-1 according to the given probability weights
+//
+int 
+banmi_sample(gsl_rng *rng, int n, const double *weight) {
     double cumprob = 0.0, total = 0.0;
     int i;
 

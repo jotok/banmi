@@ -10,9 +10,9 @@ banmi.o: banmi_util.o
 
 mico.o: banmi_util.o
 
-thit:
+thit: $(OBJECTS)
 	$(CC) `pkg-config --cflags guile-1.8` -shared -o libthit.so \
 		$(OBJECTS) -fPIC thit.c $(LDLIBS)
 
-clean: $(OBJECTS)
+clean:
 	rm -f $(P) $(OBJECTS) gmon.out libbanmi-guile.so
