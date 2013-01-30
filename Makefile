@@ -1,4 +1,4 @@
-P=flas
+P = flas_example
 OBJECTS = banmi_util.o banmi.o
 CFLAGS = -g -Wall -pg -fPIC
 LDLIBS = -lgsl -lgslcblas -lm
