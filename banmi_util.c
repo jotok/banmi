@@ -205,7 +205,7 @@ _order(int *values, int *by, int left, int right) {
 }
 
 void 
-order(int *values, const int *by, int n) {
+banmi_order_int(int *values, const int *by, int n) {
     int i, *by_copy = malloc(n * sizeof(int));
 
     for (i = 0; i < n; i++) 
@@ -249,7 +249,7 @@ _order_d(double *values, int *by, int left, int right) {
 }
 
 void 
-order_d(double *values, const int *by, int n) {
+banmi_order(double *values, const int *by, int n) {
     int i, *by_copy = malloc(n * sizeof(int));
 
     for (i = 0; i < n; i++) 
@@ -296,7 +296,7 @@ _order_blocks(int *values, int *by, int left, int right, int block_size) {
 }
 
 void 
-order_blocks(int *values, const int *by, int n_blocks, int block_size) {
+banmi_order_blocks_int(int *values, const int *by, int n_blocks, int block_size) {
     int i, *by_copy = malloc(n_blocks * sizeof(int));
 
     for (i = 0; i < n_blocks; i++) 
@@ -344,7 +344,7 @@ _order_blocks_d(double *values, int *by, int left, int right, int block_size) {
 }
 
 void 
-order_blocks_d(double *values, const int *by, int n_blocks, int block_size) {
+banmi_order_blocks(double *values, const int *by, int n_blocks, int block_size) {
     int i, *by_copy = malloc(n_blocks * sizeof(int));
 
     for (i = 0; i < n_blocks; i++) 

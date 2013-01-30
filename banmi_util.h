@@ -26,10 +26,10 @@ void tab_set(tab_t*, const int*, double);
 tab_t* new_marginal_tab(const tab_t*, const int*, int);
 tab_t* new_conditional_tab(const tab_t*, const int*, const int*, int);
 
-void order(int*, const int*, int);
-void order_d(double*, const int*, int);
-void order_blocks(int*, const int*, int, int);
-void order_blocks_d(double*, const int*, int, int);
+void banmi_order_int(int*, const int*, int);
+void banmi_order(double*, const int*, int);
+void banmi_order_blocks_int(int*, const int*, int, int);
+void banmi_order_blocks(double*, const int*, int, int);
 
 int banmi_sample(gsl_rng*, int, const double*);
 
