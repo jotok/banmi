@@ -1,9 +1,13 @@
 #ifndef Mico_h
 #define Mico_h
 
+#include <assert.h>
 #include <math.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_cdf.h>
+#include <gsl/gsl_rng.h>
 #include <gsl/gsl_statistics.h>
 
 #include "banmi_util.h"
@@ -14,6 +18,7 @@ typedef struct {
 
     // latent variables
     gsl_matrix *xi;
+    gsl_matrix *z;
     double sigma;
     
     // margin parameters
@@ -22,7 +27,7 @@ typedef struct {
 
     // hyperparameters
     int n_comp;
-    double sigma_a, sigma_b;
+    double sigma_a, sigma_b, x_nu;
     gsl_vector *mu_a, *mu_b, *theta_a, *theta_b;
 
     // data properties
