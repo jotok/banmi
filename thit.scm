@@ -58,7 +58,7 @@
 ;; Return a list of column indices corresponding to columns of the given type.
 ;;
 (define (column-indices type column-config)
-  (filter (lambda (i) (eq? (assq-ref (vector-ref column-config i) type:) 
+  (filter (lambda (i) (eq? (assq-ref (vector-ref column-config i) #:type) 
                            type))
           (iota (vector-length column-config))))
 
@@ -66,9 +66,9 @@
 ;; to the form expected by the model.
 ;;
 (define (column-transform x column)
-  (let* ((min (assq-ref column min:))
-         (size (- (assq-ref column max:) min)))
-    (case (assq-ref column type:)
+  (let* ((min (assq-ref column #:min))
+         (size (- (assq-ref column #:max) min)))
+    (case (assq-ref column #:type)
       ((discrete)
        (- x min))
       ((ordered)
@@ -87,9 +87,9 @@
 ;; column back to its original value range
 ;;
 (define (column-inverse-transform x column)
-  (let* ((min (assq-ref column min:))
-         (size (- (assq-ref column max:) min)))
-    (case (assq-ref column type:)
+  (let* ((min (assq-ref column #:min))
+         (size (- (assq-ref column #:max) min)))
+    (case (assq-ref column #:type)
       ((discrete)
        (+ x min))
       ((ordered)
@@ -100,21 +100,21 @@
 ;; Allocate a new banmi model with the given configuration
 ;;
 (define (new-model model-config data-config)
-  (let* ((column-config (assq-ref data-config columns:))
+  (let* ((column-config (assq-ref data-config #:columns))
          (discrete-columns (column-indices 'discrete column-config))
          (ordered-columns (column-indices 'ordered column-config))
          (continuous-columns (column-indices 'continuous column-config))
          (n-continuous (+ (length ordered-columns) (length continuous-columns)))
-         (bds-discrete (map (lambda (col) (1+ (- (assq-ref col max:)
-                                                 (assq-ref col min:))))
+         (bds-discrete (map (lambda (col) (1+ (- (assq-ref col #:max)
+                                                 (assq-ref col #:min))))
                             (vector-multi-ref column-config discrete-columns))))
-    (new-banmi-model (assq-ref model-config max-rows:)
+    (new-banmi-model (assq-ref model-config #:max-rows)
                      bds-discrete
                      n-continuous
-                     (assq-ref model-config dp-weight:)
-                     (assq-ref model-config init-crosstab:)
-                     (assq-ref model-config lambda-a:)
-                     (assq-ref model-config lambda-b:))))
+                     (assq-ref model-config #:dp-weight)
+                     (assq-ref model-config #:init-crosstab)
+                     (assq-ref model-config #:lambda-a)
+                     (assq-ref model-config #:lambda-b))))
 
 ;; Transform a vector of input values to a list of values that can be loaded
 ;; into the model
@@ -143,7 +143,7 @@
   (let* ((is (apply append (map (lambda (type) (column-indices type column-config))
                                 '(discrete ordered continuous))))
          (colnames (map (lambda (i) 
-                          (assq-ref (vector-ref column-config i) name:)) 
+                          (assq-ref (vector-ref column-config i) #:name)) 
                         is)))
     (apply format #t (string-join (make-list (1+ (length is)) "~a") " ") 
            (cons "imputation" colnames))
@@ -212,26 +212,26 @@
 
 ;; load data from file
 
-(define data-file (open-input-file (assq-ref data-config file:)))
+(define data-file (open-input-file (assq-ref data-config #:file)))
 
-(if (assq-ref data-config header:)
+(if (assq-ref data-config #:header)
   (read-line data-file))           ;; throw away the header
 
 (do-with-file data-file read-line
   (lambda (line)
     (let* ((input (line->vector line))
-           (model-input (input-transform input (assq-ref data-config columns:))))
+           (model-input (input-transform input (assq-ref data-config #:columns))))
       (apply banmi-load-row! banmi-model model-input))))
 
 (close-input-port data-file)
 
 ;; perform multiple imputation and print the result
 
-(let ((column-config (assq-ref data-config columns:)))
+(let ((column-config (assq-ref data-config #:columns)))
   (display-header column-config)
   (for-each (lambda (i)
-              (banmi-data-augmentation! banmi-model (assq-ref model-config n-iter:))
+              (banmi-data-augmentation! banmi-model (assq-ref model-config #:n-iter))
               (display-imputed-data (banmi-get-imputed-data banmi-model) 
                                     (1+ i) 
                                     column-config))
-            (iota (assq-ref model-config n-imputations:))))
+            (iota (assq-ref model-config #:n-imputations))))
