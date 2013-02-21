@@ -1,14 +1,10 @@
 #ifndef Mico_h
 #define Mico_h
 
-#include <assert.h>
-#include <math.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
-#include <gsl/gsl_randist.h>
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_rng.h>
-#include <gsl/gsl_statistics.h>
 
 #include "banmi_util.h"
 
@@ -20,6 +16,7 @@ typedef struct {
     gsl_matrix *xi;
     gsl_matrix *z;
     double sigma;
+    gsl_vector *mcmc_weight;
     
     // margin parameters
     gsl_vector *mu;
@@ -27,7 +24,7 @@ typedef struct {
 
     // hyperparameters
     int n_comp;
-    double sigma_a, sigma_b, x_nu;
+    double sigma_a, sigma_b, x_nu, mcmc_proposal_nu;
     gsl_vector *mu_a, *mu_b, *theta_a, *theta_b;
 
     // data properties
@@ -36,9 +33,12 @@ typedef struct {
 } mico_model_t;
 
 mico_model_t*
-new_mico_model(int, int, int, double, double);
+new_mico_model(int, int, int, double, double, double, double);
 
 void
 mico_add_row(mico_model_t*, gsl_vector*);
+
+void
+mico_data_augmentation(gsl_rng*, mico_model_t*, int);
 
 #endif

@@ -1,9 +1,17 @@
 #include "mico.h"
 
-// Allocate a new mico model
-//
+#include <assert.h>
+#include <math.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_statistics.h>
+
+/**
+ * Allocate a new mico model
+ */
 mico_model_t*
-new_mico_model(int max_rows, int n_cols, int n_comp, double sigma_a, double sigma_b) {
+new_mico_model(int max_rows, int n_cols, int n_comp, double sigma_a, double sigma_b,
+               double x_nu, double mcmc_proposal_nu) 
+{
     mico_model_t *model = malloc(sizeof(mico_model_t));
 
     model->y = gsl_matrix_alloc(max_rows, n_cols);
@@ -18,6 +26,8 @@ new_mico_model(int max_rows, int n_cols, int n_comp, double sigma_a, double sigm
     model->n_comp = n_comp;
     model->sigma_a = sigma_a;
     model->sigma_b = sigma_b;
+    model->x_nu = x_nu;
+    model->mcmc_proposal_nu = mcmc_proposal_nu;
     model->mu_a = gsl_vector_alloc(n_cols);
     model->mu_b = gsl_vector_alloc(n_cols);
     model->theta_a = gsl_vector_alloc(n_cols);
@@ -52,9 +62,10 @@ missingness_pattern(const mico_model_t *model, int row) {
     return pattern;
 }
 
-// Sort the rows of data by missingness pattern and set the n_complete and
-// n_missing fields. Returns the number of complete rows.
-//
+/**
+ * Sort the rows of data by missingness pattern and set the n_complete and
+ * n_missing fields. Returns the number of complete rows.
+ */
 static int
 sort_data_by_missingness_pattern(mico_model_t *model) {
     int i, n_complete = 0;
@@ -114,8 +125,9 @@ init_parameters(gsl_rng *rng, mico_model_t *model) {
     }
 }
 
-// Set initial values in the imputed data set.
-//
+/**
+ * Set initial values in the imputed data set. 
+ */
 static void
 init_missing_values(gsl_rng *rng, mico_model_t *model) {
     // draw from marginal models assuming independence
@@ -134,7 +146,7 @@ init_missing_values(gsl_rng *rng, mico_model_t *model) {
 }
 
 static double
-x_cdf(double x, gsl_matrix *z, double sigma, int j) {
+x_cdf(double x, const gsl_matrix *z, double sigma, int j) {
     int i;
     double result = 0.0;
     for (i = 0; i < z->size1; i++) {
@@ -145,10 +157,40 @@ x_cdf(double x, gsl_matrix *z, double sigma, int j) {
     return result / z->size1;
 }
 
+static double
+x_pdf(double x, const gsl_matrix *z, double sigma, int j) {
+    int i;
+    double result = 0.0;
+    for (i = 0; i < z->size1; i++) {
+        result += gsl_ran_gaussian_pdf(x - gsl_matrix_get(z, i, j), sigma);
+        
+    }
+
+    return result / z->size1;
+}
+
+static double
+x_pdf_multivariate(const gsl_vector *x, const gsl_matrix *z, double sigma) {
+    int i, j;
+    double result = 0.0;
+
+    for (i = 0; i < z->size1; i++) {
+        double component_result = 1.0;
+        for (j = 0; j < x->size; j++) {
+            component_result *= gsl_ran_gaussian_pdf(gsl_vector_get(x, j) - 
+                                                     gsl_matrix_get(z, i, j), 
+                                                     sigma);
+        }
+        result += component_result;        
+    }
+
+    return result / z->size1;
+}
+
 #define QuantileTolerance 1e-6
 
 static double
-u_quantile(double u, gsl_matrix *z, double sigma, int j) {
+u_quantile(double u, const gsl_matrix *z, double sigma, int j) {
     assert(0 < u && u < 1);
 
     double x = 0.0, try_x, step;
@@ -202,7 +244,7 @@ init_latent_variables(gsl_rng *rng, mico_model_t *model) {
 
     // map y's to x's
     for (i = 0; i < model->n_rows; i++) {
-        for (j = 0; j < model->n_rows; j++) {
+        for (j = 0; j < model->n_cols; j++) {
             u = gsl_cdf_gaussian_P(gsl_matrix_get(model->yi, i, j) -
                                    gsl_vector_get(model->mu, j),
                                    gsl_vector_get(model->theta, j));
@@ -215,6 +257,69 @@ init_latent_variables(gsl_rng *rng, mico_model_t *model) {
 
 static void
 draw_new_missing_values(gsl_rng *rng, mico_model_t *model) {
+    int i, j, k;
+    double yc, uc, xc, fc, yp, up, xp, fp; // current and proposed values
+    double ratio, uniform_draw;
+
+    gsl_vector *xvecc = gsl_vector_alloc(model->n_cols);
+    gsl_vector *xvecp = gsl_vector_alloc(model->n_cols);
+
+    for (i = model->n_complete; i < model->n_rows; i++) {
+        for (j = 0; j < model->n_cols; j++) {
+            if (isnan(gsl_matrix_get(model->y, i, j))) {
+                yc = gsl_matrix_get(model->yi, i, j);
+                yp = yc + gsl_ran_tdist(rng, model->mcmc_proposal_nu);
+                uc = gsl_cdf_gaussian_P(yc - gsl_vector_get(model->mu, j),
+                                        gsl_vector_get(model->theta, j));
+                up = gsl_cdf_gaussian_P(yp - gsl_vector_get(model->mu, j),
+                                        gsl_vector_get(model->theta, j));
+                xc = u_quantile(uc, model->z, model->sigma, j);
+                xp = u_quantile(up, model->z, model->sigma, j);
+
+                // now compute the density at each point
+
+                for (k = 0; k < model->n_cols; k++) {
+                    if (k == j) {
+                        gsl_vector_set(xvecc, k, xc);
+                        gsl_vector_set(xvecp, k, xp);
+                    } else {
+                        gsl_vector_set(xvecc, k, gsl_matrix_get(model->xi, i, k));
+                        gsl_vector_set(xvecp, k, gsl_matrix_get(model->xi, i, k));
+                    }
+                }
+
+                fc = x_pdf_multivariate(xvecc, model->z, model->sigma);
+                fp = x_pdf_multivariate(xvecp, model->z, model->sigma);
+
+                fc *= gsl_ran_gaussian_pdf(yc - gsl_vector_get(model->mu, j),
+                                           gsl_vector_get(model->theta, j));
+                fp *= gsl_ran_gaussian_pdf(yp - gsl_vector_get(model->mu, j),
+                                           gsl_vector_get(model->theta, j));
+
+                for (k = 0; k < model->n_cols; k++) {
+                    fc /= x_pdf(gsl_vector_get(xvecc, k), model->z, model->sigma, k);
+                    fp /= x_pdf(gsl_vector_get(xvecp, k), model->z, model->sigma, k);
+                }
+
+                ratio = fp / fc;
+                if (ratio < 1) {
+                    uniform_draw = gsl_rng_uniform(rng);
+                    if (uniform_draw > ratio) {
+                        gsl_matrix_set(model->yi, i, j, yp);
+                        gsl_matrix_set(model->xi, i, j, xp);
+                    }
+                }
+            }
+        }
+    }
+
+    gsl_vector_free(xvecc);
+    gsl_vector_free(xvecp);
+}
+
+static void
+draw_new_latent_variables(gsl_rng *rng, mico_modewl_t *model) {
+
 }
 
 void
@@ -230,6 +335,7 @@ mico_data_augmentation(gsl_rng *rng, mico_model_t *model, int n_iter) {
     int t;
     for (t = 0; t < n_iter; t++) {
         draw_new_missing_values(rng, model);
+        draw_new_latent_variables(rng, model);
     }
 }
 
