@@ -3,7 +3,6 @@
 
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
-#include <gsl/gsl_cdf.h>
 #include <gsl/gsl_rng.h>
 
 #include "banmi_util.h"
@@ -15,6 +14,7 @@ typedef struct {
     // latent variables
     gsl_matrix *xi;
     gsl_matrix *z;
+    gsl_vector_int *zind;
     double sigma;
     gsl_vector *mcmc_weight;
     

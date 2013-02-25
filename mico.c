@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <gsl/gsl_cdf.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_statistics.h>
 
@@ -19,6 +20,7 @@ new_mico_model(int max_rows, int n_cols, int n_comp, double sigma_a, double sigm
 
     model->xi = gsl_matrix_alloc(max_rows, n_cols);
     model->z = gsl_matrix_alloc(n_comp, n_cols);
+    model->zind = gsl_vector_int_alloc(max_rows);
 
     model->mu = gsl_vector_alloc(n_cols);
     model->theta = gsl_vector_alloc(n_cols);
@@ -121,7 +123,7 @@ init_parameters(gsl_rng *rng, mico_model_t *model) {
         gsl_vector_set(model->mu_b, j, beta);
 
         gsl_vector_set(model->mu, j,
-                       alpha + gsl_ran_gaussian(rng, theta / beta));
+                       alpha + gsl_ran_gaussian(rng, theta / sqrt(beta)));
     }
 }
 
@@ -226,6 +228,18 @@ u_quantile(double u, const gsl_matrix *z, double sigma, int j) {
     return x;
 }
 
+static double
+x_copula_pdf(const gsl_vector *x, const gsl_matrix *z, double sigma) {
+    double result = x_pdf_multivariate(x, z, sigma);
+
+    int j;
+    for (j = 0; j < x->size; j++) {
+        result /= x_pdf(gsl_vector_get(x, j), z, sigma, j);
+    }
+
+    return result;
+}
+
 static void
 init_latent_variables(gsl_rng *rng, mico_model_t *model) {
     model->sigma = gsl_ran_gamma(rng, model->sigma_a, 1.0 / model->sigma_b);
@@ -237,9 +251,11 @@ init_latent_variables(gsl_rng *rng, mico_model_t *model) {
         u = gsl_ran_chisq(rng, model->x_nu);
 
         for (j = 0; j < model->n_cols; j++) {
-            x = gsl_ran_gaussian(rng, 1.0) * sqrt(model->x_nu / u);
+            x = gsl_ran_ugaussian(rng) * sqrt(model->x_nu / u);
             gsl_matrix_set(model->z, i, j, x);
         }
+
+        gsl_vector_int_set(model->zind, i, (int)(model->n_comp * gsl_rng_uniform(rng)));
     }
 
     // map y's to x's
@@ -258,7 +274,7 @@ init_latent_variables(gsl_rng *rng, mico_model_t *model) {
 static void
 draw_new_missing_values(gsl_rng *rng, mico_model_t *model) {
     int i, j, k;
-    double yc, uc, xc, fc, yp, up, xp, fp; // current and proposed values
+    double yc, fc, yp, up, xp, fp; // current and proposed values
     double ratio, uniform_draw;
 
     gsl_vector *xvecc = gsl_vector_alloc(model->n_cols);
@@ -269,37 +285,29 @@ draw_new_missing_values(gsl_rng *rng, mico_model_t *model) {
             if (isnan(gsl_matrix_get(model->y, i, j))) {
                 yc = gsl_matrix_get(model->yi, i, j);
                 yp = yc + gsl_ran_tdist(rng, model->mcmc_proposal_nu);
-                uc = gsl_cdf_gaussian_P(yc - gsl_vector_get(model->mu, j),
-                                        gsl_vector_get(model->theta, j));
                 up = gsl_cdf_gaussian_P(yp - gsl_vector_get(model->mu, j),
                                         gsl_vector_get(model->theta, j));
-                xc = u_quantile(uc, model->z, model->sigma, j);
                 xp = u_quantile(up, model->z, model->sigma, j);
 
                 // now compute the density at each point
 
                 for (k = 0; k < model->n_cols; k++) {
                     if (k == j) {
-                        gsl_vector_set(xvecc, k, xc);
                         gsl_vector_set(xvecp, k, xp);
                     } else {
-                        gsl_vector_set(xvecc, k, gsl_matrix_get(model->xi, i, k));
                         gsl_vector_set(xvecp, k, gsl_matrix_get(model->xi, i, k));
                     }
                 }
 
-                fc = x_pdf_multivariate(xvecc, model->z, model->sigma);
-                fp = x_pdf_multivariate(xvecp, model->z, model->sigma);
+                gsl_matrix_get_row(xvecc, model->xi, i);
+
+                fc = x_copula_pdf(xvecc, model->z, model->sigma);
+                fp = x_copula_pdf(xvecp, model->z, model->sigma);
 
                 fc *= gsl_ran_gaussian_pdf(yc - gsl_vector_get(model->mu, j),
                                            gsl_vector_get(model->theta, j));
                 fp *= gsl_ran_gaussian_pdf(yp - gsl_vector_get(model->mu, j),
                                            gsl_vector_get(model->theta, j));
-
-                for (k = 0; k < model->n_cols; k++) {
-                    fc /= x_pdf(gsl_vector_get(xvecc, k), model->z, model->sigma, k);
-                    fp /= x_pdf(gsl_vector_get(xvecp, k), model->z, model->sigma, k);
-                }
 
                 ratio = fp / fc;
                 if (ratio < 1) {
@@ -318,9 +326,164 @@ draw_new_missing_values(gsl_rng *rng, mico_model_t *model) {
 }
 
 static void
-draw_new_latent_variables(gsl_rng *rng, mico_modewl_t *model) {
+draw_new_margin_parameters(gsl_rng *rng, mico_model_t *model) {
+    // draw marginal means / standard deviations from a normal-inverse-gamma
+    // distribution.    
 
+    double this_mu, next_mu, this_theta, next_theta;
+    double theta_a, theta_b, mu_a, mu_b;
+    double this_f, next_f, next_u, ratio, uniform_draw;
+    gsl_vector *this_x = gsl_vector_alloc(model->n_cols);
+    gsl_vector *next_x = gsl_vector_alloc(model->n_cols);
+    int i, j;
+
+    for (j = 0; j < model->n_cols; j++) {
+        this_mu = gsl_vector_get(model->mu, j);
+        this_theta = gsl_vector_get(model->theta, j);
+
+        // what should be the proposal density for (mu, theta)?
+        // for now, just drawing values from prior
+        theta_a = gsl_vector_get(model->theta_a, j);
+        theta_b = gsl_vector_get(model->theta_b, j);
+        next_theta = 1.0 / gsl_ran_gamma(rng, theta_a, 1.0 / theta_b);
+
+        mu_a = gsl_vector_get(model->mu_a, j);
+        mu_b = gsl_vector_get(model->mu_b, j);
+        next_mu = mu_a + gsl_ran_gaussian(rng, next_theta / sqrt(mu_b));
+
+        //the RHS should be proportional to the normal-inverse-gamma density
+        this_f = exp(-(2 * theta_b + mu_b * pow(this_mu - mu_a, 2.0)) /
+                     (2 * pow(this_theta, 2.0)));
+        next_f = exp(-(2 * theta_b + mu_b * pow(next_mu - mu_a, 2.0)) /
+                     (2 * pow(next_theta, 2.0)));
+
+        for (i = 0; i < model->n_rows; i++) {
+            this_f *= gsl_ran_gaussian_pdf(gsl_matrix_get(model->yi, i, j) - this_mu,
+                                           this_theta);
+            next_f *= gsl_ran_gaussian_pdf(gsl_matrix_get(model->yi, i, j) - next_mu,
+                                           next_theta);
+
+            gsl_matrix_get_row(this_x, model->xi, i);
+            gsl_matrix_get_row(next_x, model->xi, i);
+
+            next_u = gsl_cdf_gaussian_P(gsl_matrix_get(model->yi, i, j) - this_mu,
+                                        next_theta);
+            gsl_vector_set(next_x, j, u_quantile(next_u, model->z, model->sigma, j));
+
+            this_f *= x_copula_pdf(this_x, model->z, model->sigma);
+            next_f *= x_copula_pdf(next_x, model->z, model->sigma);
+        }
+
+        ratio = next_f / this_f;
+        if (ratio < 1) {
+            uniform_draw = gsl_rng_uniform(rng);
+            if (uniform_draw > ratio) {
+                gsl_vector_set(model->mu, j, next_mu);
+                gsl_vector_set(model->theta, j, next_theta);
+            }
+        }
+    }
+
+    gsl_vector_free(this_x);
+    gsl_vector_free(next_x);
+
+    // draw new mixture means
 }
+
+static void
+draw_new_mixture_means(gsl_rng *rng, mico_model_t *model) {
+    int i, j, k;
+    double weights[model->n_comp];
+
+    // Assign x's to z's
+    for (i = 0; i < model->z->size1; i++) {
+        for (k = 0; k < model->n_comp; k++) {
+            // compute the probability that x[i] was drawn from z[k]
+            weights[j] = 1;
+            for (j = 0; j < model->n_cols; j++) {
+                weights[k] *= gsl_ran_gaussian_pdf(gsl_matrix_get(model->xi, i, j) -
+                                                   gsl_matrix_get(model->z, k, j),
+                                                   model->sigma);
+            }
+        }
+
+        gsl_vector_int_set(model->zind, i, banmi_sample(rng, model->n_comp, weights));
+    }
+
+    // propose new centers
+
+    double u, x, 
+           zp[model->n_comp][model->n_cols]; // proposed z
+
+    for (k = 0; k < model->n_comp; k++) {
+        u = gsl_ran_chisq(rng, model->x_nu);
+        for (j = 0; j < model->n_cols; j++) {
+            x = gsl_ran_gaussian(rng, 1.0) * sqrt(model->x_nu / u);
+            zp[k][j] = x + gsl_matrix_get(model->z, k, j);
+        }
+    }
+
+    // Take one M-H step using a t-distribution proposal
+    double wc[model->n_comp], // weight at current z
+           wp[model->n_comp]; // weight at proposed z
+
+    for (k = 0; k < model->n_comp; k++) {
+        wc[k] = wp[k] = 1.0;
+        for (j = 0; j < model->n_cols; j++) {
+            wc[k] += pow(gsl_matrix_get(model->z, k, j), 2.0) / model->x_nu;
+            wp[k] += pow(zp[k][j], 2.0) / model->x_nu;
+        }
+        wc[k] = pow(wc[k], -(model->x_nu + model->n_cols) / 2.0);
+        wp[k] = pow(wp[k], -(model->x_nu + model->n_cols) / 2.0);
+    }
+
+    for (i = 0; i < model->n_rows; i++) {
+        k = gsl_vector_int_get(model->zind, i);
+        for (j = 0; j < model->n_cols; j++) {
+            wc[k] *= gsl_ran_gaussian_pdf(gsl_matrix_get(model->xi, i, j) -
+                                          gsl_matrix_get(model->z, k, j),
+                                          model->sigma);
+            wp[k] *= gsl_ran_gaussian_pdf(gsl_matrix_get(model->xi, i, j) -
+                                          zp[k][j],
+                                          model->sigma);
+        }
+    }
+
+    double ratio, uniform_draw;
+    for (k = 0; k < model->n_comp; k++) {
+        ratio = wp[k] / wc[k];
+        if (ratio < 1) {
+            uniform_draw = gsl_rng_uniform(rng);
+            if (uniform_draw > ratio) {
+                for (j = 0; j < model->n_cols; j++) {
+                    gsl_matrix_set(model->z, k, j, zp[k][j]);
+                }
+            }
+        }
+    }
+
+    // draw a new sigma
+
+    double sigma_a_p = model->sigma_a + model->n_rows / 2.0;
+    double sigma_b_p = model->sigma_b;
+
+    for (i = 0; i < model->n_rows; i++) {
+        k = gsl_vector_int_get(model->zind, i);
+        for (j = 0; j < model->n_cols; j++) {
+            sigma_b_p += pow(gsl_matrix_get(model->xi, i, j) - 
+                             gsl_matrix_get(model->z, k, j), 2.0) / 2.0;
+        }
+    }
+
+    model->sigma = gsl_ran_gamma(rng, sigma_a_p, 1.0 / sigma_b_p);
+}
+
+static void
+draw_new_parameters(gsl_rng *rng, mico_model_t *model) {
+    draw_new_margin_parameters(rng, model);
+    draw_new_mixture_means(rng, model);
+}
+
 
 void
 mico_data_augmentation(gsl_rng *rng, mico_model_t *model, int n_iter) {
@@ -335,7 +498,7 @@ mico_data_augmentation(gsl_rng *rng, mico_model_t *model, int n_iter) {
     int t;
     for (t = 0; t < n_iter; t++) {
         draw_new_missing_values(rng, model);
-        draw_new_latent_variables(rng, model);
+        draw_new_parameters(rng, model);
     }
 }
 
