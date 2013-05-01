@@ -140,6 +140,28 @@ thit_get_imputed_data(SCM s_model) {
     return thit_scm_from_banmi_data(model->disc_imp, model->cont_imp, model->n_rows);
 }
 
+SCM
+thit_get_missingness_pattern(SCM s_model) {
+    scm_assert_smob_type(thit_model_tag, s_model);
+    banmi_model_t *model = (banmi_model_t*)SCM_SMOB_DATA(s_model);
+
+    SCM s_rows = scm_c_make_vector(model->n_rows, SCM_BOOL_F);
+    int n_cols = model->n_disc + model->n_cont;
+    int i, j;
+    for (i = 0; i < model->n_rows; i++) {
+        SCM this_row = scm_c_make_vector(n_cols, scm_from_int(0));
+        int mask = 0;
+        for (j = 0; j < n_cols; j++) {
+            if ((model->mis_pat[i] | mask) > 0)
+                scm_vector_set_x(this_row, scm_from_int(j), scm_from_int(1));
+        }
+
+        scm_vector_set_x(s_rows, scm_from_int(i), this_row);
+    }
+
+    return s_rows;
+}
+
 // Load one of data into the model. The vararg should be a list of values with
 // length equal to the number of discrete columns plus the number of continuous
 // columns. The first values in the vararg are taken to be discrete, followed
