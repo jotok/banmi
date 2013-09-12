@@ -449,7 +449,7 @@ draw_new_missing_values(gsl_rng *rng, banmi_model_t *model) {
 
     for (i = model->n_complete; i < model->n_rows; i++) {
 
-        if (model->mis_pat[i] & model->mask_missing_cont_data) {
+        if (model->mis_pat[i] & model->mask_missing_disc_data) {
             // there are missing discrete values
             for (j = 0; j < model->n_disc; j++) {
                 if (gsl_matrix_int_get(model->disc, i, j) < 0) {
