@@ -1,7 +1,7 @@
-import Banmi
-import Mix
+include("../mix.jl")
+include("../banmi.jl")
 
-x = readcsv("stlouis.csv")
+x = readcsv("data/stlouis.csv")
 
 desc = Mix.describe(x, 3)
 theta = Mix.em(desc)

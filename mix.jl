@@ -24,10 +24,10 @@ function duplicated{T}(x::Array{T, 1})
     result = falses(length(x))
     seen = Set{T}()
     for (i, v) in enumerate(x)
-        if contains(seen, v)
+        if in(v, seen)
             result[i] = true
         else
-            add!(seen, v)
+            push!(seen, v)
         end
     end
 
@@ -69,7 +69,7 @@ function describe(w::Matrix{Int}, z::Matrix{Float64})
     q = size(z, 2)
 
     # get dimensions of contingency table
-    d = mapslices(max, w, 1)
+    d = mapslices(maximum, w, 1)
 
     # missingness indicators for z
     rz = 1 * isnan(z)
@@ -146,7 +146,7 @@ function describe(w::Matrix{Int}, z::Matrix{Float64})
           &convert(Cint, q-1), psi)
 
     # center and scale the columns of z
-    mvcode = max(z[!isnan(z)]) + 1000
+    mvcode = maximum(z[!isnan(z)]) + 1000
     na_to_code!(z, mvcode)
     xbar = Array(Cdouble, q)
     sdv = Array(Cdouble, q)
@@ -280,7 +280,7 @@ end
 # 
 function getparam(s, theta)
     pii = reshape(theta.pi, int(s.d)...)
-    mu = bsxfun(.+, bsxfun(.*, theta.mu, s.sdv), s.xbar)
+    mu = broadcast(.+, broadcast(.*, theta.mu, s.sdv), s.xbar)
     sigma = theta.sigma[s.psi]
     tmp = repmat(s.sdv, 1, int(s.q))
     sigma = sigma .* tmp .* tmp'
@@ -312,7 +312,7 @@ function impute(desc::MixDataDescription, theta::MixModel, data; mvcode=0.0)
            copy(tq))
 
     w = w[desc.ro, :]
-    z = bsxfun(.+, bsxfun(.*, z, desc.sdv'), desc.xbar')
+    z = broadcast(.+, broadcast(.*, z, desc.sdv'), desc.xbar')
     z = z[desc.ro, :]
 
     zorig = data[:, (desc.p + 1):]

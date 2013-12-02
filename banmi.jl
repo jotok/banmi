@@ -31,7 +31,7 @@ end
 
 # A struct to store an instance of the model parameters
 #
-immutable Parameters
+type Parameters
     x::Matrix{Int}          # discrete modes
     mu::Matrix{Float64}     # continuous means
     lambda::Array{Float64}  # discrete shape parameter
