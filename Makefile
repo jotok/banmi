@@ -1,5 +1,5 @@
 P = flas_example
-OBJECTS = banmi_util.o banmi.o mico.o
+OBJECTS = banmi_util.o banmi.o
 CFLAGS = -g -Wall -pg -fPIC
 LDLIBS = -lgsl -lgslcblas -lm
 CC=c99
@@ -13,7 +13,7 @@ mico.o: banmi_util.o
 mico: $(OBJECTS)
 
 thit: $(OBJECTS)
-	$(CC) `pkg-config --cflags guile-1.8` -shared -o libthit.so \
+	$(CC) `pkg-config --cflags guile-2.0` -shared -o libthit.so \
 		$(OBJECTS) -fPIC thit.c $(LDLIBS)
 
 clean:
